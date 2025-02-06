@@ -1,0 +1,31 @@
+<launch>
+
+    <!--  launching waypoint gui-->
+    <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui.py" output="screen"/>
+
+    <!-- launching plot_ visualizer -->
+    <!-- <node name="plot_visualizer" pkg="blue_rov_waypoint_interface" type="plot_visualization.py" output="screen"/> -->
+    
+    <!-- launch for static map transform -->
+    <node name="fixed_tf_broadcaster" pkg="blue_rov_waypoint_interface" type="fixed_tf_broadcaster.py" output="screen"/>
+    
+    <!-- launch  current_state_test -->
+     <node name="current_state_test" pkg="simulating_nodes" type="current_state_test.py" output="screen"/>
+    
+
+    <!-- Launch rviz -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz.rviz" />
+
+
+    <!-- Brindup robot from the folder bluerov_model -->
+    <arg name="model" default="$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro" />
+
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(arg model)" />
+    <node
+        name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+        respawn="true" output="screen" />
+        <!-- Static transform between map and world -->
+    <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="map_to_world" args="0 0 0 1 0 0 0 map NED" /> -->
+
+
+</launch>  
