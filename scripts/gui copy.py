@@ -2,78 +2,103 @@
 import rospy
 import numpy as np
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped,PoseStamped
-from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix
-from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox
+from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
+from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox, Frame
+
 
 class WaypointGui:
     def __init__(self, master):
+        # Initialize variables 
+        self.goal_waypoints = PoseArray()
+        self.goal_waypoints.header.frame_id = 'map_frame'
+        
+        self.last_waypoint_transform = np.eye(4)
+        self.last_waypoint = Pose()
+        self.home_pose = Pose()
+
+        self.current_pose = PoseWithCovarianceStamped()
+        # self.current_pose_transform = np.eye(4)
+        
+        # this stores the last waypoint visualized relative to the current state at the time of visualizing
+        self.last_waypoint_rel_to_current_state_visualized = Pose()
+        
+
+
+        # initialize the GUI
         self.master = master
         self.master.title("Manage Waypoints")
 
-        # global Frame convention is earth //need to draw these out with onur
-        # self.earth_frame = np.eye(4)
-        # self.map_frame = np.eye(4)
-        # self.odom_frame = np.eye(4)
-        # self.base_frame = np.eye(4)
-
-
-        self.goal_waypoints = PoseArray()
-        # self.goal_waypoints.header.frame_id = 'global_frame'
-        self.goal_waypoints.header.frame_id = 'map_frame'
-
-
-        self.last_waypoint_transform =np.eye(4)
-        self.last_waypoint = Pose()
-        self.home_pose = Pose()
-        self.current_state = Pose()
-
-        # Create frames for adding global waypoint
-        self.waypoint1_frame = LabelFrame(master, text="Add a global waypoint to the waypoint list")
-        self.waypoint1_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
-        self.waypoint2_frame = LabelFrame(master, text="Add a waypoint relative to the last waypoint added")
-        self.waypoint2_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Create frame for generating a square pattern in x-y plane
-        self.square_pattern_frame = LabelFrame(master, text="Generate Square Pattern in x-y plane at a global depth")
-        self.square_pattern_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
+        # Create the main container
+        self.main_frame = Frame(master)
+        self.main_frame.pack(padx=10, pady=10, fill="both", expand=True)
         
-        # self.waypoint3_frame = LabelFrame(master, text="Add a waypoint relative to the current state")
-        # self.waypoint3_frame.pack(padx=10, pady=10, fill="both", expand=True)
+        # Create frames for waypoint fields to be positioned side by side. Waypoint fields are the multi row input frames allowing for poses to be added to the gui
+        # self.waypoint_frame = LabelFrame(self.waypoint_frame, text="text")
+        # self.waypoints_frame = Frame(self.main_frame)
+        self.waypoints_frame = LabelFrame(self.main_frame, text="Add Waypoints")
+        self.waypoints_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="ew")
+        
+        # generate individual waypoint fields
+        self.waypoint1_frame = LabelFrame(self.waypoints_frame, text="Add a global waypoint to the waypoint list")
+        self.waypoint1_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+
+        self.waypoint2_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the last waypoint added")
+        self.waypoint2_frame.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+
+        self.waypoint3_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the current pose")
+        self.waypoint3_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # # Create frame for generating a square pattern in x-y plane below the waypoint fields
+        # self.square_pattern_frame = LabelFrame(self.main_frame, text="Generate Square Pattern in x-y plane at a global depth")
+        # self.square_pattern_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
         # Create fields for waypoint 1 and 2
         self.create_waypoint_fields(self.waypoint1_frame, '1')
         self.create_waypoint_fields(self.waypoint2_frame, '2')
-        
-        # self.create_waypoint_fields(self.waypoint3_frame, '2')
+        self.create_waypoint_fields(self.waypoint3_frame, '3')
 
-        # Add Set Home Position Button
-        self.home_button = Button(master, text="Set Home Position", command=self.set_home_position)
-        self.home_button.pack(side="top", fill='both', expand=True, padx=10, pady=5)
-        
-        # Add go home Button (Clears waypoints and Adds Home)
-        self.add_home_button = Button(master, text="Add Home", command=self.add_home)
-        self.add_home_button.pack(side="top", fill='both', expand=True, padx=10, pady=5)
 
-        # Add go home Button (Clears waypoints and Adds Home)
-        self.go_home_button = Button(master, text="Go Home", command=self.go_home)
-        self.go_home_button.pack(side="top", fill='both', expand=True, padx=10, pady=5)
-        
-        # Add Erase Waypoints Button
-        self.erase_waypoints_button = Button(master, text="Erase Waypoints", command=self.erase_waypoints)
-        self.erase_waypoints_button.pack(side="top", fill='both', expand=True, padx=10, pady=5)
+        # Create a separate frame for buttons and put it beside the fields frame
+        # self.button_frame = Frame(self.main_frame)
+        self.button_frame = LabelFrame(self.main_frame, text = "Manage waypoints")
+        self.button_frame.grid(row=0, column=3, columnspan=2, pady=10, sticky="ew")
 
-        # Publish button
-        self.publish_goal_waypoints = Button(master, text="Visualize Waypoint List", command=self.visualize_waypoints)
-        self.publish_goal_waypoints.pack(side="top", fill='both', expand=True, padx=10, pady=5)
+        # Add buttons beside the waypoint frames
+        self.home_button = Button(self.button_frame, text="Set Home Position", command=self.set_home_position)
+        self.home_button.grid(row=0, column=0, columnspan=2, sticky="ew", pady=2)
 
-        # # Initialize ROS node
+        self.add_home_button = Button(self.button_frame, text="Add Home", command=self.add_home)
+        self.add_home_button.grid(row=1, column=0, columnspan=2, sticky="ew", pady=2)
+
+        self.go_home_button = Button(self.button_frame, text="Go Home", command=self.go_home)
+        self.go_home_button.grid(row=2, column=0, columnspan=2, sticky="ew", pady=2)
+
+        self.erase_waypoints_button = Button(self.button_frame, text="Erase Waypoints", command=self.erase_waypoints)
+        self.erase_waypoints_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=2)
+
+        self.publish_goal_waypoints = Button(self.button_frame, text="Visualize Waypoint List", command=self.visualize_waypoints)
+        self.publish_goal_waypoints.grid(row=4, column=0, columnspan=2, sticky="ew", pady=2)
+
+        # Initialize ROS node for publishing
         self.pub1 = rospy.Publisher('new_pose_visualization', PoseStamped, queue_size=10)
-        # self.pub2 = rospy.Publisher('waypoint_topic_2', Pose, queue_size=10)
         self.pub3 = rospy.Publisher("waypoint_plot_visualization", PoseArray, queue_size=10)
 
-        # self.sub1 = rospy.Subscriber()
+        # Initialize subscriber
+        # Subscribe to the local position topic
+        self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
+    
+    def position_callback(self, msg):
+        self.current_pose = msg
+        self.current_pose_transform = self.get_current_pose_transform()
+  
+    def get_current_pose_transform(self):
+        # convert current pose to transformation matrix relative to map frame
+        trans_matrix = translation_matrix([self.current_pose.pose.pose.position.x,self.current_pose.pose.pose.position.y,self.current_pose.pose.pose.position.z])
+        roll, pitch, yaw = euler_from_quaternion([self.current_pose.pose.pose.orientation.x, self.current_pose.pose.pose.orientation.y, self.current_pose.pose.pose.orientation.z, self.current_pose.pose.pose.orientation.w])
+        rot_matrix = euler_matrix(roll,pitch,yaw)
+        transform  = concatenate_matrices(rot_matrix, trans_matrix)
+        return transform
+        # rospy.loginfo(self.current_pose_transform )
 
     def create_waypoint_fields(self, frame, suffix):
         # fields = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
@@ -176,6 +201,8 @@ class WaypointGui:
 
 
             pose_msg = Pose()
+
+            # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
             pose_stamped_msg.header.frame_id = 'map_frame'
             if suffix == '1':
@@ -218,31 +245,9 @@ class WaypointGui:
                 # update the last waypoint transform
                 self.last_waypoint_transform = transform
 
-                ############
-                # R1 = quaternion_matrix([self.last_waypoint.orientation.x, self.last_waypoint.orientation.y, self.last_waypoint.orientation.z, self.last_waypoint.orientation.w])
-                # T1 = translation_matrix([self.last_waypoint.position.x, self.last_waypoint.position.y, self.last_waypoint.position.z])
-        
-                # # convert newest waypoint to global frame 
-                # # R2 = euler_matrix(yaw, pitch,roll, 'rzyx') #sxyz
-                # R2 = euler_matrix(roll,pitch,yaw) #, 'sxyz') 
-                # T2 = translation_matrix([x,y,z])
-    
-                # transform1 = concatenate_matrices(R1,T1)
-                # transform2 = concatenate_matrices(R2,T2)
-                # transform = concatenate_matrices(transform1,transform2)
-                # transform = concatenate_matrices(R2,T2,R1,T1)
+            elif suffix == '3':
+                pose_msg = self.last_waypoint_rel_to_current_state_visualized 
 
-                # # get values for glboal waypoint
-                # translation = translation_from_matrix(transform)
-                # quaternion = quaternion_from_matrix(transform)
-                ##################
-
-
-                # rospy.loginfo(f"need to convert this to global waypoint:\n {pose_msg}")
-            
-            # formatting for rviz visualization
-            pose_stamped_msg = PoseStamped()
-            pose_stamped_msg.header.frame_id = 'map_frame'
             pose_stamped_msg.pose = pose_msg
 
             self.goal_waypoints.poses.append(pose_msg)
@@ -264,6 +269,7 @@ class WaypointGui:
 
 
             pose_msg = Pose()
+            # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
             pose_stamped_msg.header.frame_id = 'map_frame'
             if suffix == '1':
@@ -282,10 +288,9 @@ class WaypointGui:
                 # rot_matrix = euler_matrix(roll,pitch,yaw)
                 # transform = concatenate_matrices(rot_matrix, trans_matrix)
 
-
             elif suffix == '2':
                                 
-                # convert relative transdorm to global transform
+                # convert relative transform to global transform
                 trans_matrix = translation_matrix([x,y,z])
                 rot_matrix = euler_matrix(roll,pitch,yaw)
                 transform = concatenate_matrices(self.last_waypoint_transform, rot_matrix, trans_matrix)
@@ -302,11 +307,52 @@ class WaypointGui:
                 pose_msg.orientation.y = quaternion[1]
                 pose_msg.orientation.z = quaternion[2]
                 pose_msg.orientation.w = quaternion[3]
-                            
+                
+        
+            elif suffix == '3':
+                #  if we do not have a body frame to use then this should work other wise transform it using this 
+                # rospy.loginfo(self.current_pose)
+                # rospy.loginfo(self.get_current_pose_transform())
+                  
+            
+                # convert relative transform relative to body frame to  map frame
+                trans_matrix = translation_matrix([x,y,z])
+                rot_matrix = euler_matrix(roll,pitch,yaw)               
+                transform = concatenate_matrices(self.get_current_pose_transform(), rot_matrix, trans_matrix)
+
+                # convert to pose msg format
+                translation = translation_from_matrix(transform)            
+                quaternion = quaternion_from_matrix(transform)
+
+                # updating pose_msg
+                pose_msg.position.x = translation[0]
+                pose_msg.position.y = translation[1]
+                pose_msg.position.z = translation[2]
+                pose_msg.orientation.x = quaternion[0]
+                pose_msg.orientation.y = quaternion[1]
+                pose_msg.orientation.z = quaternion[2]
+                pose_msg.orientation.w = quaternion[3]
+
+                self.last_waypoint_rel_to_current_state_visualized  = pose_msg
+            
+
+                #  if we do have a body frame that gets publish i could define pose relative to body_frame
+                # pose_stamped_msg.header.frame_id = 'body_frame'
+                # pose_msg.position.x = x
+                # pose_msg.position.y = y
+                # pose_msg.position.z = z
+
+                # quaternion = quaternion_from_euler(roll, pitch, yaw)
+                # pose_msg.orientation.x = quaternion[0]
+                # pose_msg.orientation.y = quaternion[1]
+                # pose_msg.orientation.z = quaternion[2]
+                # pose_msg.orientation.w = quaternion[3]
+
+              
             # formatting for rviz visualization
-            pose_stamped_msg = PoseStamped()
-            pose_stamped_msg.header.frame_id = 'map_frame'
             pose_stamped_msg.pose = pose_msg
+           
+
             self.pub1.publish(pose_stamped_msg)
             rospy.loginfo(f"Visualized single waypoint: {pose_msg}")
 

@@ -4,11 +4,10 @@ import numpy as np
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped,PoseStamped
 from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
 from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox, Frame
+from std_msgs.msg import Bool
 
-global current_pose
-current_pose = PoseWithCovarianceStamped()
-
-class WaypointGui:
+#  should consider switching things from pose to poseStamped
+class WaypointGui:  
     def __init__(self, master):
         # Initialize variables 
         self.goal_waypoints = PoseArray()
@@ -16,9 +15,12 @@ class WaypointGui:
         
         self.last_waypoint_transform = np.eye(4)
         self.last_waypoint = Pose()
-        self.home_pose = Pose()
+        self.home_pose = PoseStamped()
 
         self.current_pose = PoseWithCovarianceStamped()
+
+        self.motion_control_state = Bool()
+        self.motion_control_state = False
         # self.current_pose_transform = np.eye(4)
         
         # this stores the last waypoint visualized relative to the current state at the time of visualizing
@@ -66,7 +68,7 @@ class WaypointGui:
         self.button_frame.grid(row=0, column=3, columnspan=2, pady=10, sticky="ew")
 
         # Add buttons beside the waypoint frames
-        self.home_button = Button(self.button_frame, text="Set Home Position", command=self.set_home_position)
+        self.home_button = Button(self.button_frame, text="Set Home Position", command=self.set_home_pose)
         self.home_button.grid(row=0, column=0, columnspan=2, sticky="ew", pady=2)
 
         self.add_home_button = Button(self.button_frame, text="Add Home", command=self.add_home)
@@ -78,16 +80,30 @@ class WaypointGui:
         self.erase_waypoints_button = Button(self.button_frame, text="Erase Waypoints", command=self.erase_waypoints)
         self.erase_waypoints_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=2)
 
+    
         self.publish_goal_waypoints = Button(self.button_frame, text="Visualize Waypoint List", command=self.visualize_waypoints)
         self.publish_goal_waypoints.grid(row=4, column=0, columnspan=2, sticky="ew", pady=2)
 
+        self.invoke_motion_controller = Button(self.button_frame, text="Invoke motion controller", command=self.invoke_motion_control)
+        self.invoke_motion_controller.grid(row=5, column=0, columnspan=2, sticky="ew", pady=2)
+
+        self.disable_motion_controller = Button(self.button_frame, text="Disable motion controller", command=self.disable_motion_control)
+        self.disable_motion_controller.grid(row=6, column=0, columnspan=2, sticky="ew", pady=2)
+
+
         # Initialize ROS node for publishing
         self.pub1 = rospy.Publisher('new_pose_visualization', PoseStamped, queue_size=10)
+        self.pub2 = rospy.Publisher("motion_control_state", Bool, queue_size=10)
         self.pub3 = rospy.Publisher("waypoint_plot_visualization", PoseArray, queue_size=10)
+
+        # need to create the array to send the motion controller 
+        # self.pub4 = rospy.Publisher("waypoint_plot_visualization", PoseArray, queue_size=10)
+
 
         # Initialize subscriber
         # Subscribe to the local position topic
-        self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
+        self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
+        # self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
     
     def position_callback(self, msg):
         self.current_pose = msg
@@ -103,18 +119,6 @@ class WaypointGui:
         # rospy.loginfo(self.current_pose_transform )
 
     def create_waypoint_fields(self, frame, suffix):
-        # fields = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
-        # self.entries = {}
-
-        # for i, field in enumerate(fields):
-        #     label = Label(frame, text=f"{field.capitalize()}:")
-        #     label.grid(row=i, column=0, padx=5, pady=5)
-        #     entry = Entry(frame)
-        #     entry.grid(row=i, column=1, padx=5, pady=5)
-        #     self.entries[f"{field}{suffix}"] = entry
-        
-        # submit_button = Button(frame, text=f"Submit Waypoint {suffix}", command=lambda: self.submit_waypoint(suffix))
-        # submit_button.grid(row=len(fields), column=0, columnspan=2, pady=10)
         """ Helper function to create labeled entry widgets """
         x_label = Label(frame, text="X:")
         x_label.grid(row=0, column=0, padx=5, pady=5)
@@ -152,25 +156,24 @@ class WaypointGui:
         submit_button = Button(frame, text=f"Submit Waypoint", command=lambda: self.submit_waypoint(suffix))
         submit_button.grid(row=6, column=2, columnspan=2,pady=10)
 
-    
     # need to subscribe to info about the current state or origin
-    def set_home_position(self):
+    def set_home_pose(self):
         """ Sets the home position """
-        pose_msg = Pose()
-        pose_msg.position.x = 0.0
-        pose_msg.position.y = 0.0
-        pose_msg.position.z = 0.0
+        # pose_msg = Pose()
+        # pose_msg.position.x = 0.0
+        # pose_msg.position.y = 0.0
+        # pose_msg.position.z = 0.0
 
-        quaternion = quaternion_from_euler(0.0, 0.0, 0.0)
-        pose_msg.orientation.x = quaternion[0]
-        pose_msg.orientation.y = quaternion[1]
-        pose_msg.orientation.z = quaternion[2]
-        pose_msg.orientation.w = quaternion[3]
-
-        self.home_pose = pose_msg
+        # quaternion = quaternion_from_euler(0.0, 0.0, 0.0)
+        # pose_msg.orientation.x = quaternion[0]
+        # pose_msg.orientation.y = quaternion[1]
+        # pose_msg.orientation.z = quaternion[2]
+        # pose_msg.orientation.w = quaternion[3]
+        self.home_pose.header.frame_id="map_frame"
+        self.home_pose = self.current_pose.pose.pose
         # self.pub1.publish(pose_msg)
-        self.goal_waypoints.poses.append(pose_msg)
-        rospy.loginfo("Set home position and published")
+        # self.goal_waypoints.poses.append(pose_msg)
+        rospy.loginfo("Set home position as: {self.home_pose.pose}")
 
     def erase_waypoints(self):
         """ Erase the waypoints array """
@@ -183,10 +186,11 @@ class WaypointGui:
         self.goal_waypoints.poses.clear()
         self.goal_waypoints.poses.append(self.home_pose)
         rospy.loginfo("Reset waypoints to home position")
-        messagebox.showinfo("Success", "Waypoints have been reset to home position.")
+        messagebox.showinfo("Success", "Waypoints have been cleared. Ready to head to home position.")
 
     def add_home(self):
         """ Adds the home postion as the next waypoint"""
+
         self.goal_waypoints.poses.append(self.home_pose)
         rospy.loginfo(f"Added home waypoint to list:\n {self.home_pose}")
         
@@ -373,7 +377,16 @@ class WaypointGui:
             self.pub3.publish(self.goal_waypoints)
             rospy.loginfo("Published goal waypoints array")
 
-
+    def invoke_motion_control(self):
+        self.motion_control_state = True
+        self.pub2.publish(self.motion_control_state)
+        rospy.loginfo("Invoked motion controller")
+    
+    def disable_motion_control(self):   
+        self.motion_control_state = False
+        self.pub2.publish(self.motion_control_state)
+        rospy.loginfo("Disabled motion controller")
+        
     # def square(self, depth)
 def main():
     rospy.init_node('waypoint_gui')

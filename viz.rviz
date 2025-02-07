@@ -132,7 +132,7 @@ Visualization Manager:
       Shaft Length: 0.20000000298023224
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /current_state_test
+      Topic: /dvl/local_position
       Unreliable: false
       Value: true
   Enabled: true
