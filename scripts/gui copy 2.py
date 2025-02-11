@@ -4,7 +4,7 @@ import numpy as np
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped,PoseStamped
 from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
 from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox, Frame
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String, Int8
 from nav_msgs.msg import Path
 
 #  should consider switching things from pose to poseStamped
@@ -12,7 +12,7 @@ class WaypointGui:
     def __init__(self, master):
         # Initialize variables 
         self.goal_waypoints = PoseArray()
-        self.goal_waypoints.header.frame_id = 'NED'
+        self.goal_waypoints.header.frame_id = 'map'
         
         self.last_waypoint_transform = np.eye(4)
         self.last_waypoint = Pose()
@@ -20,26 +20,16 @@ class WaypointGui:
 
         self.current_pose = PoseWithCovarianceStamped()
 
-        self.motion_control_state = Bool()
-        self.motion_control_state = False
+        self.motion_control_state = Int8
+        self.motion_control_state = 0
         # self.current_pose_transform = np.eye(4)
         
         # this stores the last waypoint visualized relative to the current state at the time of visualizing
         self.last_waypoint_rel_to_current_state_visualized = Pose()
         
         self.desired_path = Path()
-        self.desired_path.header.frame_id='NED'
+        self.desired_path.header.frame_id='map'
 
-        #         [[-1.0000000e+00  1.2246468e-16  0.0000000e+00  0.0000000e+00]
-        #  [-1.2246468e-16 -1.0000000e+00  0.0000000e+00  0.0000000e+00]
-        #  [ 0.0000000e+00  0.0000000e+00  1.0000000e+00  0.0000000e+00]
-        #  [ 0.0000000e+00  0.0000000e+00  0.0000000e+00  1.0000000e+00]]
-        # transform from ned 2 map
-
-        # q = np.array([0, 0, -1.0, 6.123234e-17])
-        # T = translation_matrix([0,0,0])
-        # R = quaternion_matrix(q)
-        # self.ned2map = concatenate_matrices(R,T)
 
         # initialize the GUI
         self.master = master
@@ -97,16 +87,16 @@ class WaypointGui:
         self.publish_goal_waypoints = Button(self.button_frame, text="Visualize Waypoint List", command=self.visualize_waypoints)
         self.publish_goal_waypoints.grid(row=4, column=0, columnspan=2, sticky="ew", pady=2)
 
-        self.toggle_motion_controller = Button(self.button_frame, text="Toggle motion controller", command=self.enable_motion_control)
+        self.toggle_motion_controller = Button(self.button_frame, text="Toggle motion controller", command=self.toggle_motion_control)
         self.toggle_motion_controller.grid(row=5, column=0, columnspan=2, sticky="ew", pady=2)
 
-        self.disable_motion_controller = Button(self.button_frame, text="Disable motion controller", command=self.disable_motion_control)
-        self.disable_motion_controller.grid(row=6, column=0, columnspan=2, sticky="ew", pady=2)
+        # self.disable_motion_controller = Button(self.button_frame, text="Disable motion controller", command=self.disable_motion_control)
+        # self.disable_motion_controller.grid(row=6, column=0, columnspan=2, sticky="ew", pady=2)
 
 
         # Initialize ROS node for publishing
         self.pub1 = rospy.Publisher('new_pose_visualization', PoseStamped, queue_size=10)
-        self.pub2 = rospy.Publisher("motion_control_state",Bool, queue_size=10)
+        self.pub2 = rospy.Publisher("motion_control_state",Int8, queue_size=10)
         self.pub3 = rospy.Publisher("waypoint_plot_visualization", PoseArray, queue_size=10)
 
         # publishes the array to send the motion controller 
@@ -117,8 +107,8 @@ class WaypointGui:
 
         # Initialize subscriber
         # Subscribe to the local position topic
-        # self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
-        self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
+        self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
+        # self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
 
         # self.disable_motion_control()   
     
@@ -127,7 +117,7 @@ class WaypointGui:
         self.current_pose_transform = self.get_current_pose_transform()
   
     def get_current_pose_transform(self):
-        # convert current pose to transformation matrix relative in NED frame
+        # convert current pose to transformation matrix relative to map frame
         trans_matrix = translation_matrix([self.current_pose.pose.pose.position.x,self.current_pose.pose.pose.position.y,self.current_pose.pose.pose.position.z])
         roll, pitch, yaw = euler_from_quaternion([self.current_pose.pose.pose.orientation.x, self.current_pose.pose.pose.orientation.y, self.current_pose.pose.pose.orientation.z, self.current_pose.pose.pose.orientation.w])
         rot_matrix = euler_matrix(roll,pitch,yaw)
@@ -186,7 +176,7 @@ class WaypointGui:
         # pose_msg.orientation.y = quaternion[1]
         # pose_msg.orientation.z = quaternion[2]
         # pose_msg.orientation.w = quaternion[3]
-        self.home_pose.header.frame_id='NED'
+        self.home_pose.header.frame_id="map"
         self.home_pose = self.current_pose.pose.pose
         # self.pub1.publish(pose_msg)
         # self.goal_waypoints.poses.append(pose_msg)
@@ -227,7 +217,7 @@ class WaypointGui:
 
             # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
-            pose_stamped_msg.header.frame_id = 'NED'
+            pose_stamped_msg.header.frame_id = 'map'
             if suffix == '1':
                 pose_msg.position.x = x
                 pose_msg.position.y = y
@@ -271,18 +261,13 @@ class WaypointGui:
             elif suffix == '3':
                 pose_msg = self.last_waypoint_rel_to_current_state_visualized 
 
-            # adding the waypoint to the waypoint array and desired path 
             pose_stamped_msg.pose = pose_msg
+
             self.goal_waypoints.poses.append(pose_msg)
+            rospy.loginfo(f"Added waypoint to list:\n {pose_msg}")
 
             # testing the path message
             self.desired_path.poses.append(pose_stamped_msg)
-            rospy.loginfo(f"Added waypoint to list:\n {pose_msg}")
-
-            # Publishing waypoints array to the visualizer
-            self.pub3.publish(self.goal_waypoints)
-            rospy.loginfo("Published goal waypoints array")
-
 
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint {suffix}: {ve}")
@@ -302,9 +287,8 @@ class WaypointGui:
             pose_msg = Pose()
             # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
-            pose_stamped_msg.header.frame_id = 'NED'
+            pose_stamped_msg.header.frame_id = 'map'
             if suffix == '1':
-                # pose_stamped_msg.header.frame_id = 'NED'
                 pose_msg.position.x = x
                 pose_msg.position.y = y
                 pose_msg.position.z = z
@@ -321,7 +305,7 @@ class WaypointGui:
                 # transform = concatenate_matrices(rot_matrix, trans_matrix)
 
             elif suffix == '2':
-                # pose_stamped_msg.header.frame_id = 'NED'
+                                
                 # convert relative transform to global transform
                 trans_matrix = translation_matrix([x,y,z])
                 rot_matrix = euler_matrix(roll,pitch,yaw)
@@ -339,42 +323,13 @@ class WaypointGui:
                 pose_msg.orientation.y = quaternion[1]
                 pose_msg.orientation.z = quaternion[2]
                 pose_msg.orientation.w = quaternion[3]
-            
+                
         
             elif suffix == '3':
-                
-                # recieving in NED frame need to convert to NED frame
-                # pose_stamped_msg.header.frame_id = 'NED' # base_link
-                
-                # pose_stamped_msg.header.frame_id = 'NED'
-                # # convert relative transform to global transform
-                # trans_matrix = translation_matrix([x,y,z])
-                # rot_matrix = euler_matrix(roll,pitch,yaw)
-                # transform = concatenate_matrices(self.ned2map, rot_matrix, trans_matrix)
-
-                # # convert to pose msg format
-                # translation = translation_from_matrix(transform)            
-                # quaternion = quaternion_from_matrix(transform)
-
-                # # updating pose_msg
-                # pose_msg.position.x = translation[0]
-                # pose_msg.position.y = translation[1]
-                # pose_msg.position.z = translation[2]
-                # pose_msg.orientation.x = quaternion[0]
-                # pose_msg.orientation.y = quaternion[1]
-                # pose_msg.orientation.z = quaternion[2]
-                # pose_msg.orientation.w = quaternion[3]
-                # pose_msg.position.x = x
-                # pose_msg.position.y = y
-                # pose_msg.position.z = z
-
-                # quaternion = quaternion_from_euler(roll, pitch, yaw)
-                # pose_msg.orientation.x = quaternion[0]
-                # pose_msg.orientation.y = quaternion[1]
-                # pose_msg.orientation.z = quaternion[2]
-                # pose_msg.orientation.w = quaternion[3]
-
-
+                #  if we do not have a body frame to use then this should work other wise transform it using this 
+                # rospy.loginfo(self.current_pose)
+                # rospy.loginfo(self.get_current_pose_transform())
+                  
             
                 # convert relative transform relative to body frame to  map frame
                 trans_matrix = translation_matrix([x,y,z])
@@ -430,10 +385,8 @@ class WaypointGui:
         else:
             # rospy.loginfo("waypoints: \n" + self.goal_waypoints.poses)
             self.pub3.publish(self.goal_waypoints)
-            self.pub5.publish(self.desired_path)
-            rospy.loginfo("Published goal waypoints array and path for visualizing")
+            rospy.loginfo("Published goal waypoints array")
 
-    # no longer needed
     def toggle_motion_control(self):
 
         if self.motion_control_state == 1:
@@ -446,20 +399,6 @@ class WaypointGui:
             rospy.loginfo("Enabled motion controller")
             self.pub4.publish(self.goal_waypoints)
             self.pub5.publish(self.desired_path)
-
-    def enable_motion_control(self):
-        self.motion_control_state = True
-        rospy.loginfo("Activating motion controller")
-        self.pub4.publish(self.goal_waypoints)
-        self.pub5.publish(self.desired_path)
-        self.pub2.publish(self.motion_control_state)
-
-    def disable_motion_control(self):
-        self.motion_control_state = False
-        rospy.loginfo("Disabling motion controller")
-        self.pub2.publish(self.motion_control_state)
-
-
 
     # def square(self,x,y,depth):
 
