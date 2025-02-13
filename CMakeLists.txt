@@ -9,6 +9,11 @@ project(blue_rov_waypoint_interface)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  geometry_msgs
+  roscpp
+  sensor_msgs
+  std_msgs
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -202,3 +207,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+catkin_install_python(PROGRAMS  scripts/gui.py
+  DESTINATION $(CATKIN_PACKAGE_BIN_DESTINATION)
+)
+
