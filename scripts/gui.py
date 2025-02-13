@@ -30,17 +30,6 @@ class WaypointGui:
         self.desired_path = Path()
         self.desired_path.header.frame_id='NED'
 
-        #         [[-1.0000000e+00  1.2246468e-16  0.0000000e+00  0.0000000e+00]
-        #  [-1.2246468e-16 -1.0000000e+00  0.0000000e+00  0.0000000e+00]
-        #  [ 0.0000000e+00  0.0000000e+00  1.0000000e+00  0.0000000e+00]
-        #  [ 0.0000000e+00  0.0000000e+00  0.0000000e+00  1.0000000e+00]]
-        # transform from ned 2 map
-
-        # q = np.array([0, 0, -1.0, 6.123234e-17])
-        # T = translation_matrix([0,0,0])
-        # R = quaternion_matrix(q)
-        # self.ned2map = concatenate_matrices(R,T)
-
         # initialize the GUI
         self.master = master
         self.master.title("Manage Waypoints")
@@ -56,7 +45,7 @@ class WaypointGui:
         self.waypoints_frame.grid(row=0, column=0, columnspan=2, pady=10, sticky="ew")
         
         # generate individual waypoint fields
-        self.waypoint1_frame = LabelFrame(self.waypoints_frame, text="Add a global waypoint to the waypoint list")
+        self.waypoint1_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint in NED frame to the waypoint list")
         self.waypoint1_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
         self.waypoint2_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the last waypoint added")
@@ -94,15 +83,20 @@ class WaypointGui:
         self.erase_waypoints_button.grid(row=3, column=0, columnspan=2, sticky="ew", pady=2)
 
     
-        self.publish_goal_waypoints = Button(self.button_frame, text="Visualize Waypoint List", command=self.visualize_waypoints)
-        self.publish_goal_waypoints.grid(row=4, column=0, columnspan=2, sticky="ew", pady=2)
+        self.visualize_goal_waypoints = Button(self.button_frame, text="Visualize Waypoint List", command=self.visualize_waypoints)
+        self.visualize_goal_waypoints.grid(row=4, column=0, columnspan=2, sticky="ew", pady=2)
 
-        self.toggle_motion_controller = Button(self.button_frame, text="Toggle motion controller", command=self.enable_motion_control)
+        self.toggle_motion_controller = Button(self.button_frame, text="Activate motion controller", command=self.enable_motion_control)
         self.toggle_motion_controller.grid(row=5, column=0, columnspan=2, sticky="ew", pady=2)
 
         self.disable_motion_controller = Button(self.button_frame, text="Disable motion controller", command=self.disable_motion_control)
         self.disable_motion_controller.grid(row=6, column=0, columnspan=2, sticky="ew", pady=2)
 
+        self.publish_to_controller= Button(self.button_frame, text="Publish waypoints to controller", command=self.publish_goal_waypoints)
+        self.publish_to_controller.grid(row=7, column=0, columnspan=2, sticky="ew", pady=2)
+
+        self.make_square= Button(self.button_frame, text="Generate Square", command=self.generate_square)
+        self.make_square.grid(row=8, column=0, columnspan=2, sticky="ew", pady=2)
 
         # Initialize ROS node for publishing
         self.pub1 = rospy.Publisher('new_pose_visualization', PoseStamped, queue_size=10)
@@ -449,7 +443,7 @@ class WaypointGui:
 
     def enable_motion_control(self):
         self.motion_control_state = True
-        rospy.loginfo("Activating motion controller")
+        rospy.loginfo("Activating motion controller and sending waypoints")
         self.pub4.publish(self.goal_waypoints)
         self.pub5.publish(self.desired_path)
         self.pub2.publish(self.motion_control_state)
@@ -460,9 +454,56 @@ class WaypointGui:
         self.pub2.publish(self.motion_control_state)
 
 
+    def publish_goal_waypoints(self):
+        self.pub4.publish(self.goal_waypoints)
+        self.pub5.publish(self.desired_path)
+        rospy.loginfo("sending waypoints")
+        
+    def add_defined_waypoint(self,x,y,z,roll,pitch,yaw):
+        # x=0,y=0,z=0,roll=0,pitch=0,yaw =0):
+        pose_msg = Pose()
 
-    # def square(self,x,y,depth):
+        # formatting for rviz visualization
+        pose_stamped_msg = PoseStamped()
+        pose_stamped_msg.header.frame_id = 'NED'
+    
+        pose_msg.position.x = x
+        pose_msg.position.y = y
+        pose_msg.position.z = z
 
+        quaternion = quaternion_from_euler(roll, pitch, yaw)
+        pose_msg.orientation.x = quaternion[0]
+        pose_msg.orientation.y = quaternion[1]
+        pose_msg.orientation.z = quaternion[2]
+        pose_msg.orientation.w = quaternion[3]
+        
+        # adding the waypoint to the waypoint array and desired path 
+        pose_stamped_msg.pose = pose_msg
+        self.goal_waypoints.poses.append(pose_msg)
+
+        # Publishing waypoints array to the visualizer
+        self.desired_path.poses.append(pose_stamped_msg)
+
+    def generate_square(self):
+        # length, width, depth
+        l, w, d = 1, 1, 1
+
+        self.add_defined_waypoint(x=0,y=0,z=0,roll=0,pitch=0,yaw =0)
+        self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
+        self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =0)
+        self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =np.pi/2)
+        self.add_defined_waypoint(x=l,y=w,z=d,roll=0,pitch=0,yaw =np.pi/2)
+        self.add_defined_waypoint(x=l,y=w,z=d,roll=0,pitch=0,yaw =np.pi)
+        self.add_defined_waypoint(x=0,y=w,z=d,roll=0,pitch=0,yaw =np.pi)
+        self.add_defined_waypoint(x=0,y=w,z=d,roll=0,pitch=0,yaw =3*np.pi/2)
+        self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =3*np.pi/2)
+        self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
+        self.add_defined_waypoint(x=0,y=0,z=0,roll=0,pitch=0,yaw =0)
+
+        rospy.loginfo("Publishing square waypoints")
+        self.pub3.publish(self.goal_waypoints)
+        self.pub5.publish(self.desired_path)
+    
 
 def main():
     rospy.init_node('waypoint_gui')
