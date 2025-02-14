@@ -4,9 +4,11 @@
     <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui.py" output="screen"/>
     
     <!-- launch  MOTION_CONTROLLER  -->
-    <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_v5.py" output="screen"/>
+    <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_v5.py" output="screen"/> -->
     
-
+    <!-- launch  MOTION_CONTROLLER  -->
+    <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_hardware.py" output="screen"/>
+    
 
 
     <!-- simulations for testing  -->

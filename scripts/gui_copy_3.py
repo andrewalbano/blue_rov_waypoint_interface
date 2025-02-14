@@ -16,19 +16,10 @@ class WaypointGui:
         
         self.last_waypoint_transform = np.eye(4)
         self.last_waypoint = Pose()
-    
+        self.home_pose = PoseStamped()
 
         self.current_pose = PoseWithCovarianceStamped()
-        self.init_pose = PoseStamped()
-        self.init_pose.header.frame_id = self.current_pose.header.frame_id
-        self.init_pose.pose= self.current_pose.pose.pose
 
-        self.home_pose = PoseStamped()
-        self.home_pose.header.frame_id = self.current_pose.header.frame_id
-        self.home_pose.pose= self.current_pose.pose.pose
-       
-
-        
         self.motion_control_state = Bool()
         self.motion_control_state = False
 
@@ -38,12 +29,9 @@ class WaypointGui:
         
         # this stores the last waypoint visualized relative to the current state at the time of visualizing
         self.last_waypoint_rel_to_current_state_visualized = Pose()
-
-        self.last_waypoint_rel_to_current_state_visualized = None
+        
         self.desired_path = Path()
         self.desired_path.header.frame_id='NED'
-
-        self.desired_path.poses.append(self.init_pose)
 
         self.start_waypoint_index = Int8()
         self.start_waypoint_index = 0
@@ -62,58 +50,69 @@ class WaypointGui:
 
         # Major Grid 
     
-        # Main_frame column 1
+        # Major Grid column 1
         self.waypoints_frame = LabelFrame(self.main_frame, text="Add Waypoints")
         self.waypoints_frame.grid(row = 0, column=0, columnspan=2, pady=10, sticky="ew")
         
-        # add waypoints frame 
-        # add waypoints frame row 1
-        self.add_waypoint_frame_1 = LabelFrame(self.waypoints_frame, text="Add a waypoint in NED frame to the waypoint list")
-        self.add_waypoint_frame_1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
-        # add waypoints frame row 1 column 2
-        self.add_waypoint_frame_2 = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the last waypoint added")
-        self.add_waypoint_frame_2.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
-        # add waypoints frame row 2 column 1
-        self.add_waypoint_frame_3= LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the current pose")
-        self.add_waypoint_frame_3.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
-        # add waypoints frame row 2 column 2
-        # currently empty 
+        # generate individual waypoint fields
+        self.waypoint1_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint in NED frame to the waypoint list")
+        self.waypoint1_frame.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+
+        self.waypoint2_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the last waypoint added")
+        self.waypoint2_frame.grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
+
+        self.waypoint3_frame = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the current pose")
+        self.waypoint3_frame.grid(row=3, column=0, padx=5, pady=5, sticky="nsew")
+        
+        # # Create frame for generating a square pattern in x-y plane below the waypoint fields
+        # self.square_pattern_frame = LabelFrame(self.main_frame, text="Generate Square Pattern in x-y plane at a global depth")
+        # self.square_pattern_frame.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
         # Create fields for waypoint 1 and 2
-        self.create_waypoint_fields(self.add_waypoint_frame_1 , '1')
-        self.create_waypoint_fields(self.add_waypoint_frame_2, '2')
-        self.create_waypoint_fields(self.add_waypoint_frame_3, '3')
+        self.create_waypoint_fields(self.waypoint1_frame, '1')
+        self.create_waypoint_fields(self.waypoint2_frame, '2')
+        self.create_waypoint_fields(self.waypoint3_frame, '3')
 
         # Add buttons beside the waypoint frames
-        # Main Frame row 2
+        # Major Grid column 2
         row_index = 0
         column_index = 0
         column_span = 2
+
         
         # Create a separate frame for buttons and put it beside the fields frame
-        # self.motion_controller_frame = Frame(self.main_frame)
-        self.motion_controller_frame = LabelFrame(self.main_frame, text = "Motion Controller")
-        self.motion_controller_frame.grid(row=1, column=0, columnspan=2, pady=10, sticky="ew")
+        # self.button_frame = Frame(self.main_frame)
+        self.button_frame = LabelFrame(self.main_frame, text = "Manage waypoints")
+        self.button_frame.grid(row=0, column=3, columnspan=2, pady=10, sticky="ew")
 
         # Add buttons beside the waypoint frames
-        # main frame row 2
+        # Major Grid column 2
         row_index = 0
         column_index = 0
         column_span = 2
        
         # column 1
-        self.toggle_motion_controller = Button(self.motion_controller_frame, text="Activate controller", command=self.enable_motion_control)
+        self.toggle_motion_controller = Button(self.button_frame, text="Activate motion controller", command=self.enable_motion_control)
         self.toggle_motion_controller.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2,  pady=2)
         row_index +=1
 
+        
+        self.pause= Button(self.button_frame, text="Toggle hold pose", command=self.toggle_hold_pose)
+        self.pause.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
+        row_index +=1
 
-        self.go_home_button = Button(self.motion_controller_frame, text="Go home", command=self.go_home)
+
+        self.go_home_button = Button(self.button_frame, text="Go home", command=self.go_home)
         self.go_home_button.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew",padx=2, pady=2)
         row_index +=1
 
 
-        self.publish_to_controller= Button(self.motion_controller_frame, text="Update waypoints", command=self.publish_goal_waypoints)
+        self.publish_to_controller= Button(self.button_frame, text="Publish updated waypoints list to controller", command=self.publish_goal_waypoints)
         self.publish_to_controller.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
+        row_index +=1
+
+        self.erase_waypoints_button = Button(self.button_frame, text="Erase Waypoints", command=self.erase_waypoints)
+        self.erase_waypoints_button.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
         row_index +=1
 
 
@@ -121,50 +120,28 @@ class WaypointGui:
         row_index = 0
         column_index += column_span
 
-        self.disable_motion_controller = Button(self.motion_controller_frame, text="Disable controller", command=self.disable_motion_control)
+        self.disable_motion_controller = Button(self.button_frame, text="Disable motion controller", command=self.disable_motion_control)
         self.disable_motion_controller.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
         row_index +=1
 
 
-        self.home_button = Button(self.motion_controller_frame, text="Set home position", command=self.set_home_pose)
+        self.home_button = Button(self.button_frame, text="Set home position", command=self.set_home_pose)
         self.home_button.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
         row_index +=1
 
-        self.erase_waypoints_button = Button(self.motion_controller_frame, text="Erase Waypoints", command=self.erase_waypoints)
-        self.erase_waypoints_button.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
-        row_index +=1
 
-        # column 3
-        row_index = 0
-        column_index += column_span
-
-        self.pause= Button(self.motion_controller_frame, text="Toggle hold pose", command=self.toggle_hold_pose)
-        self.pause.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
-        row_index +=1
-
-        self.add_home_button = Button(self.motion_controller_frame, text="Add home position", command=self.add_home)
+        self.add_home_button = Button(self.button_frame, text="Append home position to waypoint list", command=self.add_home)
         self.add_home_button.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
         row_index +=1 
 
-        self.visualize_goal_waypoints = Button(self.motion_controller_frame, text="Visualize plan", command=self.visualize_waypoints)
-        self.visualize_goal_waypoints.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew", padx=2, pady=2)
-        row_index +=1
 
-        # main frame row 3 column 1
-        row_index = 0
-        column_index = 0
-        column_span = 2
-        self.generate_waypoints_frame = LabelFrame(self.main_frame, text = "Generate test patterns")
-        self.generate_waypoints_frame.grid(row=2, column=0, columnspan=2, pady=10, sticky="ew")
-        
-        # generate waypoints frame row 1 column 1
-        row_index = 0
-        column_index = 0
-        column_span = 2
-
-        self.make_square= Button(self.generate_waypoints_frame, text="Generate Square", command=self.generate_square)
+        self.make_square= Button(self.button_frame, text="Generate Square", command=self.generate_square)
         self.make_square.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew",  padx=2, pady=2)
         row_index +=1
+
+        # self.visualize_goal_waypoints = Button(self.button_frame, text="Visualize Waypoint List", command=self.visualize_waypoints)
+        # self.visualize_goal_waypoints.grid(row=row_index, column=0, columnspan=2, sticky="ew", padx=2, pady=2)
+        # row_index +=1
 
 
 
@@ -267,7 +244,7 @@ class WaypointGui:
         # pose_msg.orientation.z = quaternion[2]
         # pose_msg.orientation.w = quaternion[3]
         self.home_pose.header.frame_id='NED'
-        self.home_pose.pose = self.current_pose.pose.pose
+        self.home_pose = self.current_pose.pose.pose
         # self.pub1.publish(pose_msg)
         # self.goal_waypoints.poses.append(pose_msg)
         rospy.loginfo("Set home position as: {self.home_pose.pose}")
@@ -293,26 +270,19 @@ class WaypointGui:
         self.pub5.publish(self.desired_path)
     
         rospy.loginfo("Erased all waypoints, reset waypoint controller index, holding current position")
-        # messagebox.showinfo("Success", "All waypoints have been erased.")
+        messagebox.showinfo("Success", "All waypoints have been erased.")
 
     def go_home(self):
         """ Clears waypoints and adds home position as the first waypoint and immediatley heads to home """
         self.erase_waypoints()
-        self.goal_waypoints.poses.append(self.home_pose.pose)
-        self.desired_path.poses.append(self.home_pose)
-
-        self.pub3.publish(self.goal_waypoints)
-        self.pub4.publish(self.goal_waypoints)
-        self.pub5.publish(self.desired_path)
+        self.goal_waypoints.poses.append(self.home_pose)
         rospy.loginfo("Reset waypoints to home position")
-        # messagebox.showinfo("Success", "Waypoints have been cleared. Ready to head to home position.")
+        messagebox.showinfo("Success", "Waypoints have been cleared. Ready to head to home position.")
 
     def add_home(self):
         """ Adds the home postion as the next waypoint"""
-        self.goal_waypoints.poses.append(self.home_pose.pose)
-        self.desired_path.poses.append(self.home_pose)
-        self.pub3.publish(self.goal_waypoints)
-        self.pub5.publish(self.desired_path)
+
+        self.goal_waypoints.poses.append(self.home_pose)
         rospy.loginfo(f"Added home waypoint to list:\n {self.home_pose}")
         
     # need to add conversion to clobal frame if relative waypoint is given
@@ -332,7 +302,6 @@ class WaypointGui:
             # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
             pose_stamped_msg.header.frame_id = 'NED'
-            self.desired_path.header.frame_id = 'NED'
             if suffix == '1':
                 pose_msg.position.x = x
                 pose_msg.position.y = y
@@ -347,7 +316,7 @@ class WaypointGui:
                 # update the transform for the waypoint
                 trans_matrix = translation_matrix([x,y,z])
                 rot_matrix = euler_matrix(roll,pitch,yaw)
-                transform = concatenate_matrices(rot_matrix, trans_matrix)
+                self.last_waypoint_transform = concatenate_matrices(rot_matrix, trans_matrix)
 
 
             elif suffix == '2':
@@ -371,23 +340,11 @@ class WaypointGui:
                 pose_msg.orientation.w = quaternion[3]
 
                 # update the last waypoint transform
-                # self.last_waypoint_transform = transform
+                self.last_waypoint_transform = transform
 
             elif suffix == '3':
-             
                 pose_msg = self.last_waypoint_rel_to_current_state_visualized 
 
-                # storing the transformation for last waypoint added
-                trans_matrix = translation_matrix([pose_msg.position.x,pose_msg.position.y,pose_msg.position.z])
-                rot_matrix = quaternion_matrix([pose_msg.orientation.x, pose_msg.orientation.y,pose_msg.orientation.z,pose_msg.orientation.w])
-                transform = concatenate_matrices(rot_matrix, trans_matrix)
-
-                
-
-            # update the last waypoint transform
-            self.last_waypoint_transform = transform
-
-        
             # adding the waypoint to the waypoint array and desired path 
             pose_stamped_msg.pose = pose_msg
             self.goal_waypoints.poses.append(pose_msg)
@@ -398,7 +355,6 @@ class WaypointGui:
 
             # Publishing waypoints array to the visualizer
             self.pub3.publish(self.goal_waypoints)
-            self.pub5.publish(self.desired_path)
             rospy.loginfo("Published goal waypoints array")
 
 
@@ -460,8 +416,41 @@ class WaypointGui:
             
         
             elif suffix == '3':
+                
+                # recieving in NED frame need to convert to NED frame
+                # pose_stamped_msg.header.frame_id = 'NED' # base_link
+                
+                # pose_stamped_msg.header.frame_id = 'NED'
+                # # convert relative transform to global transform
+                # trans_matrix = translation_matrix([x,y,z])
+                # rot_matrix = euler_matrix(roll,pitch,yaw)
+                # transform = concatenate_matrices(self.ned2map, rot_matrix, trans_matrix)
+
+                # # convert to pose msg format
+                # translation = translation_from_matrix(transform)            
+                # quaternion = quaternion_from_matrix(transform)
+
+                # # updating pose_msg
+                # pose_msg.position.x = translation[0]
+                # pose_msg.position.y = translation[1]
+                # pose_msg.position.z = translation[2]
+                # pose_msg.orientation.x = quaternion[0]
+                # pose_msg.orientation.y = quaternion[1]
+                # pose_msg.orientation.z = quaternion[2]
+                # pose_msg.orientation.w = quaternion[3]
+                # pose_msg.position.x = x
+                # pose_msg.position.y = y
+                # pose_msg.position.z = z
+
+                # quaternion = quaternion_from_euler(roll, pitch, yaw)
+                # pose_msg.orientation.x = quaternion[0]
+                # pose_msg.orientation.y = quaternion[1]
+                # pose_msg.orientation.z = quaternion[2]
+                # pose_msg.orientation.w = quaternion[3]
+
+
             
-                # convert relative transform relative to body frame to Ned frame
+                # convert relative transform relative to body frame to  map frame
                 trans_matrix = translation_matrix([x,y,z])
                 rot_matrix = euler_matrix(roll,pitch,yaw)               
                 transform = concatenate_matrices(self.get_current_pose_transform(), rot_matrix, trans_matrix)
@@ -481,6 +470,20 @@ class WaypointGui:
 
                 self.last_waypoint_rel_to_current_state_visualized  = pose_msg
             
+
+                #  if we do have a body frame that gets publish i could define pose relative to body_frame
+                # pose_stamped_msg.header.frame_id = 'body_frame'
+                # pose_msg.position.x = x
+                # pose_msg.position.y = y
+                # pose_msg.position.z = z
+
+                # quaternion = quaternion_from_euler(roll, pitch, yaw)
+                # pose_msg.orientation.x = quaternion[0]
+                # pose_msg.orientation.y = quaternion[1]
+                # pose_msg.orientation.z = quaternion[2]
+                # pose_msg.orientation.w = quaternion[3]
+
+              
             # formatting for rviz visualization
             pose_stamped_msg.pose = pose_msg
            
@@ -496,18 +499,13 @@ class WaypointGui:
     
     def visualize_waypoints(self):
         """ Publish the waypoints list to the plot when the button is pressed """
-        # if not self.goal_waypoints.poses:
-        #     rospy.logwarn("Waypoint array is empty")
-        # else:
-        #     # rospy.loginfo("waypoints: \n" + self.goal_waypoints.poses)
-        #     self.pub3.publish(self.goal_waypoints)
-        #     self.pub5.publish(self.desired_path)
-        #     rospy.loginfo("Published goal waypoints array and path for visualizing")
-        #     # rospy.loginfo("waypoints: \n" + self.goal_waypoints.poses)
-        # self.pub3.publish(self.goal_waypoints)
-        self.pub5.publish(self.desired_path)
-        rospy.loginfo("Published goal waypoints array and path for visualizing")
-
+        if not self.goal_waypoints.poses:
+            rospy.logwarn("Waypoint array is empty")
+        else:
+            # rospy.loginfo("waypoints: \n" + self.goal_waypoints.poses)
+            self.pub3.publish(self.goal_waypoints)
+            self.pub5.publish(self.desired_path)
+            rospy.loginfo("Published goal waypoints array and path for visualizing")
 
     # no longer needed
     def toggle_motion_control(self):

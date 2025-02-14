@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /PoseWithCovariance1/Covariance1
-        - /PoseWithCovariance2
         - /PoseWithCovariance2/Covariance1
       Splitter Ratio: 0.5
     Tree Height: 787
@@ -248,7 +247,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.4542317390441895
+      Distance: 19.472700119018555
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -264,9 +263,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6302033066749573
+      Pitch: 0.5047966837882996
       Target Frame: <Fixed Frame>
-      Yaw: 5.433588027954102
+      Yaw: 0.7454140782356262
     Saved: ~
 Window Geometry:
   Displays:
