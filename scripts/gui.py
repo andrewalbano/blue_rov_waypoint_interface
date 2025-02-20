@@ -4,13 +4,41 @@ import numpy as np
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped,PoseStamped
 from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
 from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox, Frame
-from std_msgs.msg import Bool,Int8
+from std_msgs.msg import Bool,Int8,Float32MultiArray
 from nav_msgs.msg import Path
 
 #  should consider switching things from pose to poseStamped
 class WaypointGui:  
     def __init__(self, master):
         # Initialize variables 
+        self.kp_xy = 0.0
+        self.kd_xy = 0.0
+        self.ki_xy = 0.0
+
+        self.kp_z = 0.0
+        self.kd_z = 0.0
+        self.ki_z = 0.0
+
+        self.kp_yaw = 0.0
+        self.kd_yaw = 0.0
+        self.ki_yaw = 0.0
+
+        self.gains = Float32MultiArray()
+        self.gains.data = [
+            self.kp_xy,
+            self.kd_xy,
+            self.ki_xy,
+            self.kp_z,
+            self.kd_z,
+            self.ki_z,
+            self.kp_yaw,
+            self.kd_yaw,
+            self.ki_yaw
+
+        ]
+
+
+
         self.goal_waypoints = PoseArray()
         self.goal_waypoints.header.frame_id = 'NED'
         
@@ -40,6 +68,9 @@ class WaypointGui:
         self.last_waypoint_rel_to_current_state_visualized = Pose()
 
         self.last_waypoint_rel_to_current_state_visualized = None
+        self.last_waypoint_rel_to_current_state_visualized_transform =np.eye(4)
+
+        
         self.desired_path = Path()
         self.desired_path.header.frame_id='NED'
 
@@ -66,23 +97,48 @@ class WaypointGui:
         self.waypoints_frame = LabelFrame(self.main_frame, text="Add Waypoints")
         self.waypoints_frame.grid(row = 0, column=0, columnspan=2, pady=10, sticky="ew")
         
+        # # add waypoints frame 
+        # # add waypoints frame row 1
+        # self.add_waypoint_frame_1 = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nNED frame")
+        # self.add_waypoint_frame_1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+        # # add waypoints frame row 1 column 2
+        # self.add_waypoint_frame_2 = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nthe last waypoint added")
+        # self.add_waypoint_frame_2.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        # # add waypoints frame row 2 column 1
+        # self.add_waypoint_frame_3= LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nthe current pose")
+        # self.add_waypoint_frame_3.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+
+        # # add waypoints frame row 2 column 2
+        # self.pid_gains= LabelFrame(self.waypoints_frame, text="PID Gains")
+        # self.pid_gains.grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
+
+        # # add waypoints frame row 2 column 2
+        # # currently empty 
+
         # add waypoints frame 
         # add waypoints frame row 1
-        self.add_waypoint_frame_1 = LabelFrame(self.waypoints_frame, text="Add a waypoint in NED frame to the waypoint list")
+        self.add_waypoint_frame_1 = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nNED frame")
         self.add_waypoint_frame_1.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         # add waypoints frame row 1 column 2
-        self.add_waypoint_frame_2 = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the last waypoint added")
+        self.add_waypoint_frame_2 = LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nthe last waypoint added")
         self.add_waypoint_frame_2.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
         # add waypoints frame row 2 column 1
-        self.add_waypoint_frame_3= LabelFrame(self.waypoints_frame, text="Add a waypoint relative to the current pose")
-        self.add_waypoint_frame_3.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+        self.add_waypoint_frame_3= LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nthe current pose")
+        self.add_waypoint_frame_3.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
+
+        # add waypoints frame row 2 column 2
+        self.pid_gains= LabelFrame(self.waypoints_frame, text="PID Gains")
+        self.pid_gains.grid(row=1, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
+
         # add waypoints frame row 2 column 2
         # currently empty 
 
+
         # Create fields for waypoint 1 and 2
-        self.create_waypoint_fields(self.add_waypoint_frame_1 , '1')
+        self.create_waypoint_fields(self.add_waypoint_frame_1, '1')
         self.create_waypoint_fields(self.add_waypoint_frame_2, '2')
         self.create_waypoint_fields(self.add_waypoint_frame_3, '3')
+        self.create_pid_gains(self.pid_gains)
 
         # Add buttons beside the waypoint frames
         # Main Frame row 2
@@ -192,6 +248,9 @@ class WaypointGui:
 
         # publishes True when waypoint_index is reset
         self.pub8 = rospy.Publisher("hold_pose_waypoint", PoseStamped, queue_size=10)
+        # publishes True when waypoint_index is reset
+        self.pub9 = rospy.Publisher("controller_gains", Float32MultiArray, queue_size=10)
+
 
 
 
@@ -248,10 +307,98 @@ class WaypointGui:
         getattr(self, f"yaw{suffix}_entry").grid(row=5, column=1, padx=5, pady=5)
 
         visualize_button = Button(frame, text=f"Visualize Waypoint", command=lambda: self.visualize_potential_waypoint(suffix))
-        visualize_button.grid(row=6, column=0, columnspan=2, pady=10)
+        visualize_button.grid(row=6, column=1, columnspan=2, pady=5)
 
         submit_button = Button(frame, text=f"Submit Waypoint", command=lambda: self.submit_waypoint(suffix))
-        submit_button.grid(row=6, column=2, columnspan=2,pady=10)
+        submit_button.grid(row=7, column=1, columnspan=2,pady=5)
+
+    def create_pid_gains(self, frame):
+        """ Helper function to create labeled entry widgets """
+        # row 1 
+        kp_label = Label(frame, text="kp")
+        kp_label.grid(row=0, column=1, padx=5, pady=5)
+
+        kd_label = Label(frame, text="kd")
+        kd_label.grid(row=0, column=2, padx=5, pady=5)       
+
+        ki_label = Label(frame, text="ki")
+        ki_label.grid(row=0, column=3, padx=5, pady=5)  
+
+
+
+        # row 2
+        xy_label = Label(frame, text="xy")
+        xy_label.grid(row=1, column=0, padx=5, pady=5)
+        setattr(self, "kp_xy_entry", Entry(frame))
+        getattr(self, "kp_xy_entry").grid(row=1, column=1, padx=5, pady=5)
+        setattr(self, "kd_xy_entry", Entry(frame))
+        getattr(self, "kd_xy_entry").grid(row=1, column=2, padx=5, pady=5)
+        setattr(self, "ki_xy_entry", Entry(frame))
+        getattr(self, "ki_xy_entry").grid(row=1, column=3, padx=5, pady=5)
+
+         # row 3
+        z_label = Label(frame, text="z")
+        z_label.grid(row=2, column=0, padx=5, pady=5)
+        setattr(self, "kp_z_entry", Entry(frame))
+        getattr(self, "kp_z_entry").grid(row=2, column=1, padx=5, pady=5)
+        setattr(self, "kd_z_entry", Entry(frame))
+        getattr(self, "kd_z_entry").grid(row=2, column=2, padx=5, pady=5)
+        setattr(self, "ki_z_entry", Entry(frame))
+        getattr(self, "ki_z_entry").grid(row=2, column=3, padx=5, pady=5)
+
+         # row 4
+        yaw_label = Label(frame, text="yaw")
+        yaw_label.grid(row=3, column=0, padx=5, pady=5)
+        setattr(self, "kp_yaw_entry", Entry(frame))
+        getattr(self, "kp_yaw_entry").grid(row=3, column=1, padx=5, pady=5)
+        setattr(self, "kd_yaw_entry", Entry(frame))
+        getattr(self, "kd_yaw_entry").grid(row=3, column=2, padx=5, pady=5)
+        setattr(self, "ki_yaw_entry", Entry(frame))
+        getattr(self, "ki_yaw_entry").grid(row=3, column=3, padx=5, pady=5)
+
+        submit_gains_button = Button(frame, text=f"Submit gains", command=lambda: self.submit_gains())
+        submit_gains_button.grid(row=4, column=3,pady=10)
+    
+    
+    def submit_gains(self):
+        """ Extract values from entries and publish them """
+        try:
+            self.gains.data.clear()
+
+            self.kp_xy = float(getattr(self, "kp_xy_entry").get())
+            self.kd_xy = float(getattr(self, "kd_xy_entry").get())
+            self.ki_xy = float(getattr(self, "ki_xy_entry").get())
+            
+            self.kp_z = float(getattr(self, "kp_z_entry").get())
+            self.kd_z = float(getattr(self, "kd_z_entry").get())
+            self.ki_z = float(getattr(self, "ki_z_entry").get())
+            
+            
+            self.kp_yaw = float(getattr(self, "kp_yaw_entry").get())
+            self.kd_yaw = float(getattr(self, "kd_yaw_entry").get())
+            self.ki_yaw = float(getattr(self, "ki_yaw_entry").get())
+            
+
+            self.gains.data = [
+                        self.kp_xy,
+                        self.kd_xy,
+                        self.ki_xy,
+                        self.kp_z,
+                        self.kd_z,
+                        self.ki_z,
+                        self.kp_yaw,
+                        self.kd_yaw,
+                        self.ki_yaw
+                    ]
+            
+            self.pub9.publish(self.gains)
+
+            rospy.loginfo("Sending new controller gains")
+            # rospy.loginfo(self.gains)
+        except ValueError as ve:
+            rospy.logerr(f"Invalid input for controller gains: {ve}")
+            messagebox.showerror("Input Error", f"Invalid input for controller gains: {ve}")
+        
 
     # need to subscribe to info about the current state or origin
     def set_home_pose(self):
@@ -270,7 +417,7 @@ class WaypointGui:
         self.home_pose.pose = self.current_pose.pose.pose
         # self.pub1.publish(pose_msg)
         # self.goal_waypoints.poses.append(pose_msg)
-        rospy.loginfo("Set home position as: {self.home_pose.pose}")
+        rospy.loginfo(f"Set home position as: {self.home_pose.pose}")
 
     def erase_waypoints(self):
         """ Erase the waypoints array """
@@ -355,7 +502,9 @@ class WaypointGui:
                 # convert relative transdorm to global transform
                 trans_matrix = translation_matrix([x,y,z])
                 rot_matrix = euler_matrix(roll,pitch,yaw)
-                transform = concatenate_matrices(self.last_waypoint_transform, rot_matrix, trans_matrix)
+                transform = concatenate_matrices(trans_matrix, rot_matrix) 
+                transform = concatenate_matrices(self.last_waypoint_transform, transform)
+                
 
                 # convert to pose msg format
                 translation = translation_from_matrix(transform)            
@@ -375,12 +524,13 @@ class WaypointGui:
 
             elif suffix == '3':
              
-                pose_msg = self.last_waypoint_rel_to_current_state_visualized 
+                pose_msg = self.last_waypoint_rel_to_current_state_visualized
+                transform = self.last_waypoint_rel_to_current_state_visualized_transform 
 
-                # storing the transformation for last waypoint added
-                trans_matrix = translation_matrix([pose_msg.position.x,pose_msg.position.y,pose_msg.position.z])
-                rot_matrix = quaternion_matrix([pose_msg.orientation.x, pose_msg.orientation.y,pose_msg.orientation.z,pose_msg.orientation.w])
-                transform = concatenate_matrices(rot_matrix, trans_matrix)
+                # # storing the transformation for last waypoint added
+                # trans_matrix = translation_matrix([pose_msg.position.x,pose_msg.position.y,pose_msg.position.z])
+                # rot_matrix = quaternion_matrix([pose_msg.orientation.x, pose_msg.orientation.y,pose_msg.orientation.z,pose_msg.orientation.w])
+                # transform = concatenate_matrices(rot_matrix, trans_matrix)
 
                 
 
@@ -443,8 +593,8 @@ class WaypointGui:
                 # convert relative transform to global transform
                 trans_matrix = translation_matrix([x,y,z])
                 rot_matrix = euler_matrix(roll,pitch,yaw)
-                transform = concatenate_matrices(self.last_waypoint_transform, rot_matrix, trans_matrix)
-
+                transform = concatenate_matrices(trans_matrix, rot_matrix) #makes translation in current frame then rotates the orientationof the body
+                transform = concatenate_matrices(self.last_waypoint_transform, transform)
                 # convert to pose msg format
                 translation = translation_from_matrix(transform)            
                 quaternion = quaternion_from_matrix(transform)
@@ -463,8 +613,12 @@ class WaypointGui:
             
                 # convert relative transform relative to body frame to Ned frame
                 trans_matrix = translation_matrix([x,y,z])
-                rot_matrix = euler_matrix(roll,pitch,yaw)               
-                transform = concatenate_matrices(self.get_current_pose_transform(), rot_matrix, trans_matrix)
+                rot_matrix = euler_matrix(roll,pitch,yaw)    
+                transform = concatenate_matrices(trans_matrix, rot_matrix)            
+                # transform = concatenate_matrices(rot_matrix,trans_matrix) 
+                # transform = concatenate_matrices(self.get_current_pose_transform(), rot_matrix, trans_matrix)
+                # transform = concatenate_matrices(self.current_pose_transform, transform)
+                transform = concatenate_matrices(self.get_current_pose_transform(), transform)
 
                 # convert to pose msg format
                 translation = translation_from_matrix(transform)            
@@ -480,6 +634,7 @@ class WaypointGui:
                 pose_msg.orientation.w = quaternion[3]
 
                 self.last_waypoint_rel_to_current_state_visualized  = pose_msg
+                self.last_waypoint_rel_to_current_state_visualized_transform = transform
             
             # formatting for rviz visualization
             pose_stamped_msg.pose = pose_msg
@@ -568,9 +723,8 @@ class WaypointGui:
 
     def generate_square(self):
         # length, width, depth
-        l, w, d = 1, 1, 1
+        l, w, d = 5, 5, 0
 
-        self.add_defined_waypoint(x=0,y=0,z=0,roll=0,pitch=0,yaw =0)
         self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
         self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =0)
         self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =np.pi/2)
@@ -581,6 +735,18 @@ class WaypointGui:
         self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =3*np.pi/2)
         self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
         self.add_defined_waypoint(x=0,y=0,z=0,roll=0,pitch=0,yaw =0)
+
+        # self.add_defined_waypoint(x=0,y=0,z=0,roll=0,pitch=0,yaw =0)
+        # self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
+        # self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =0)
+        # self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =np.pi/2)
+        # self.add_defined_waypoint(x=l,y=w,z=d,roll=0,pitch=0,yaw =np.pi/2)
+        # self.add_defined_waypoint(x=l,y=w,z=d,roll=0,pitch=0,yaw =np.pi)
+        # self.add_defined_waypoint(x=0,y=w,z=d,roll=0,pitch=0,yaw =np.pi)
+        # self.add_defined_waypoint(x=0,y=w,z=d,roll=0,pitch=0,yaw =3*np.pi/2)
+        # self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =3*np.pi/2)
+        # self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
+        # self.add_defined_waypoint(x=0,y=0,z=0,roll=0,pitch=0,yaw =0)
 
         rospy.loginfo("Publishing square waypoints")
         self.pub3.publish(self.goal_waypoints)
