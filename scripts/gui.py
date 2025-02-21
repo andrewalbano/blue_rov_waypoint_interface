@@ -40,6 +40,12 @@ class WaypointGui:
         self.max_linear_velocity = 0
         self.min_pwm = 0
         self.max_pwm = 0
+        self.v_testing_toggle ="off"
+        self.vx = 0
+        self.vy = 0
+        self.vz = 0
+        self.vyaw = 0
+
 
 
 
@@ -337,33 +343,41 @@ class WaypointGui:
 
     def create_velocity_setpoint(self, frame, suffix):
         """ Helper function to create labeled entry widgets """
+
+
         # row 1 
         vx_label = Label(frame, text="x velocity (m/s)")
         vx_label.grid(row=0, column=0, padx=5, pady=5)
-        setattr(self, f"vx", Entry(frame, width = 10))
-        getattr(self, f"vx").grid(row=0, column=1, padx=5, pady=5)
+        setattr(self, f"vx_entry", Entry(frame, width = 10))
+        getattr(self, f"vx_entry").grid(row=0, column=1, padx=5, pady=5)
 
 
 
         vy_label = Label(frame, text="y velocity (m/s)")
         vy_label.grid(row=1, column=0, padx=5, pady=5)
-        setattr(self, f"vy", Entry(frame, width = 10))
-        getattr(self, f"vy").grid(row=1, column=1, padx=5, pady=5)
+        setattr(self, f"vy_entry", Entry(frame, width = 10))
+        getattr(self, f"vy_entry").grid(row=1, column=1, padx=5, pady=5)
 
 
         vz_label = Label(frame, text="z velocity (m/s)")
         vz_label.grid(row=2, column=0, padx=5, pady=5)
-        setattr(self, f"vz", Entry(frame, width = 10))
-        getattr(self, f"vz").grid(row=2, column=1, padx=5, pady=5)
+        setattr(self, f"vz_entry", Entry(frame, width = 10))
+        getattr(self, f"vz_entry").grid(row=2, column=1, padx=5, pady=5)
 
         vyaw_label = Label(frame, text="angular velocity (degree/s)")
         vyaw_label.grid(row=3, column=0, padx=5, pady=5)
-        setattr(self, f"vyaw", Entry(frame, width = 10))
-        getattr(self, f"vyaw").grid(row=3, column=1, padx=5, pady=5)
+        setattr(self, f"vyaw_entry", Entry(frame, width = 10))
+        getattr(self, f"vyaw_entry").grid(row=3, column=1, padx=5, pady=5)
+
+        v_testing_toggle_label = Label(frame, text="on / off")
+        v_testing_toggle_label.grid(row=4, column=0, padx=5, pady=5)
+        setattr(self, f"v_testing_toggle_entry", Entry(frame, width = 10))
+        getattr(self, f"v_testing_toggle_entry").grid(row=4, column=1, padx=5, pady=5)
+
 
 
         submit_velocity_button = Button(frame, text=f"Submit velocity setpoint", command=lambda: self.submit_gains(suffix))
-        submit_velocity_button.grid(row= 4, column=0,pady=10)
+        submit_velocity_button.grid(row= 5, column=0,pady=10)
 
 
     
@@ -375,21 +389,22 @@ class WaypointGui:
         linear_velocity_label = Label(frame, text="max linear velocity (m/s)")
         linear_velocity_label.grid(row=0, column=0, padx=5, pady=5)
 
-        setattr(self, f"max_linear_velocity", Entry(frame, width = 10))
-        getattr(self, f"max_linear_velocity").grid(row=0, column=1, padx=5, pady=5)
+        setattr(self, f"max_linear_velocity_entry", Entry(frame, width = 10))
+        getattr(self, f"max_linear_velocity_entry").grid(row=0, column=1, padx=5, pady=5)
 
         min_pwm_label = Label(frame, text="min pwm")
         min_pwm_label.grid(row=1, column=0, padx=5, pady=5)
-        setattr(self, f"min_pwm", Entry(frame, width = 10))
-        getattr(self, f"min_pwm").grid(row=1, column=1, padx=5, pady=5)
+        setattr(self, f"min_pwm_entry", Entry(frame, width = 10))
+        getattr(self, f"min_pwm_entry").grid(row=1, column=1, padx=5, pady=5)
 
         max_pwm_label = Label(frame, text="max pwm")
         max_pwm_label.grid(row=2, column=0, padx=5, pady=5)
-        setattr(self, f"max_pwm", Entry(frame, width = 10))
-        getattr(self, f"max_pwm").grid(row=2, column=1, padx=5, pady=5)
+        setattr(self, f"max_pwm_entry", Entry(frame, width = 10))
+        getattr(self, f"max_pwm_entry").grid(row=2, column=1, padx=5, pady=5)
 
 
         submit_params_button = Button(frame, text=f"Submit params", command=lambda: self.submit_gains(suffix))
+
         submit_params_button.grid(row= 3, column=0,pady=10)
     
 
@@ -459,8 +474,13 @@ class WaypointGui:
                 rospy.loginfo("Sending new parameters")
                 
             elif suffix == '4':
-                indicator = 4
-                rospy.loginfo("Invoking velocity controller and sending veloity setpoints")
+                self.v_testing_toggle  = getattr(self,"v_testing_toggle_entry").get()
+                if self.v_testing_toggle =="on":
+                    indicator = 4
+                    rospy.loginfo("Invoking velocity controller testing mode and sending veloity setpoints")
+                else: 
+                    indicator = 5 # returns to normal mode
+                    rospy.loginfo("Disabling velocity testing")
 
             if suffix  == '1' or suffix =='2':
                 self.kp_xy = float(getattr(self, f"kp_xy_entry_{suffix}").get())
@@ -490,9 +510,9 @@ class WaypointGui:
                     ]
 
             elif suffix == '3':
-                self.max_linear_velocity  = float(getattr(self,"max_linear_velocity").get())
-                self.min_pwm  = float(getattr(self,"min_pwm").get())
-                self.max_pwm  = float(getattr(self,"max_pwm").get())
+                self.max_linear_velocity  = float(getattr(self,"max_linear_velocity_entry").get())
+                self.min_pwm  = float(getattr(self,"min_pwm_entry").get())
+                self.max_pwm  = float(getattr(self,"max_pwm_entry").get())
                 self.gains.data = [
                         indicator,
                         self.max_linear_velocity,
@@ -501,10 +521,11 @@ class WaypointGui:
                     ]
                 
             elif suffix == '4':
-                self.vx  = float(getattr(self,"vx").get())
-                self.vy  = float(getattr(self,"vy").get())
-                self.vz  = float(getattr(self,"vz").get())
-                self.vyaw  = float(getattr(self,"vyaw").get())*np.pi/180
+                self.vx  = float(getattr(self,"vx_entry").get())
+                self.vy  = float(getattr(self,"vy_entry").get())
+                self.vz  = float(getattr(self,"vz_entry").get())
+                self.vyaw  = float(getattr(self,"vyaw_entry").get())*np.pi/180
+            
                 self.gains.data = [
                         indicator,
                         self.vx,
