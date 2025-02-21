@@ -36,7 +36,10 @@ class WaypointGui:
             self.kd_yaw,
             self.ki_yaw
 
-        ]
+        ]   
+        self.max_linear_velocity = 0
+        self.min_pwm = 0
+        self.max_pwm = 0
 
 
 
@@ -336,8 +339,19 @@ class WaypointGui:
         setattr(self, f"max_linear_velocity", Entry(frame, width = 10))
         getattr(self, f"max_linear_velocity").grid(row=0, column=1, padx=5, pady=5)
 
+        min_pwm_label = Label(frame, text="min pwm")
+        min_pwm_label.grid(row=1, column=0, padx=5, pady=5)
+        setattr(self, f"min_pwm", Entry(frame, width = 10))
+        getattr(self, f"min_pwm").grid(row=1, column=1, padx=5, pady=5)
+
+        max_pwm_label = Label(frame, text="max pwm")
+        max_pwm_label.grid(row=2, column=0, padx=5, pady=5)
+        setattr(self, f"max_pwm", Entry(frame, width = 10))
+        getattr(self, f"max_pwm").grid(row=2, column=1, padx=5, pady=5)
+
+
         submit_params_button = Button(frame, text=f"Submit params", command=lambda: self.submit_gains(suffix))
-        submit_params_button.grid(row= 1, column=0,pady=10)
+        submit_params_button.grid(row= 3, column=0,pady=10)
     
 
 
@@ -435,9 +449,13 @@ class WaypointGui:
 
             elif suffix == '3':
                 self.max_linear_velocity  = float(getattr(self,"max_linear_velocity").get())
+                self.min_pwm  = float(getattr(self,"min_pwm").get())
+                self.max_pwm  = float(getattr(self,"min_pwm").get())
                 self.gains.data = [
                         indicator,
-                        self.max_linear_velocity
+                        self.max_linear_velocity,
+                        self.min_pwm,
+                        self.max_pwm
                     ]
             
             self.pub9.publish(self.gains)
