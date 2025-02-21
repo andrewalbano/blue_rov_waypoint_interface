@@ -130,6 +130,11 @@ class WaypointGui:
         # add waypoints frame row 2 column 1
         self.position_pid_gains= LabelFrame(self.waypoints_frame, text="Position PID Gains")
         self.position_pid_gains.grid(row=1, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
+
+        # add waypoints frame row 2 column 2
+        self.params = LabelFrame(self.waypoints_frame, text="Other Params")
+        self.params.grid(row=1, column=2, columnspan = 2, padx=5, pady=5, sticky="nsew")
+
         # add waypoints frame row 3 column 1
         self.PWM_pid_gains= LabelFrame(self.waypoints_frame, text="PWM PID Gains")
         self.PWM_pid_gains.grid(row=2, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
@@ -143,6 +148,7 @@ class WaypointGui:
         self.create_waypoint_fields(self.add_waypoint_frame_3, '3')
         self.create_pid_gains(self.position_pid_gains,'1')
         self.create_pid_gains(self.PWM_pid_gains,'2')
+        self.create_params(self.params,'3')
 
 
 
@@ -320,6 +326,21 @@ class WaypointGui:
         submit_button = Button(frame, text=f"Submit Waypoint", command=lambda: self.submit_waypoint(suffix))
         submit_button.grid(row=5, column=1, columnspan=2,pady=5)
 
+
+    def create_params(self, frame, suffix):
+        """ Helper function to create labeled entry widgets """
+        # row 1 
+        linear_velocity_label = Label(frame, text="max linear velocity (m/s)")
+        linear_velocity_label.grid(row=0, column=0, padx=5, pady=5)
+
+        setattr(self, f"max_linear_velocity", Entry(frame, width = 10))
+        getattr(self, f"max_linear_velocity").grid(row=0, column=1, padx=5, pady=5)
+
+        submit_params_button = Button(frame, text=f"Submit params", command=lambda: self.submit_gains(suffix))
+        submit_params_button.grid(row= 1, column=0,pady=10)
+    
+
+
     def create_pid_gains(self, frame,suffix):
         """ Helper function to create labeled entry widgets """
         # row 1 
@@ -373,20 +394,6 @@ class WaypointGui:
         try:
             self.gains.data.clear()
 
-            self.kp_xy = float(getattr(self, f"kp_xy_entry_{suffix}").get())
-            self.kd_xy = float(getattr(self, f"kd_xy_entry_{suffix}").get())
-            self.ki_xy = float(getattr(self, f"ki_xy_entry_{suffix}").get())
-            
-            self.kp_z = float(getattr(self, f"kp_z_entry_{suffix}").get())
-            self.kd_z = float(getattr(self, f"kd_z_entry_{suffix}").get())
-            self.ki_z = float(getattr(self, f"ki_z_entry_{suffix}").get())
-            
-            
-            self.kp_yaw = float(getattr(self, f"kp_yaw_entry_{suffix}").get())
-            self.kd_yaw = float(getattr(self, f"kd_yaw_entry_{suffix}").get())
-            self.ki_yaw = float(getattr(self, f"ki_yaw_entry_{suffix}").get())
-            
-
             # indicator indicates which pid gains are bing changed without creating a new topic
             if suffix=='1':
                 indicator = 1
@@ -394,8 +401,26 @@ class WaypointGui:
             elif suffix == '2':
                 indicator = 2
                 rospy.loginfo("Sending new controller gains for PWM controller")
+            elif suffix == '3':
+                indicator = 3
+                rospy.loginfo("Sending new parameters")
+                
 
-            self.gains.data = [
+            if suffix  == '1' or suffix =='2':
+                self.kp_xy = float(getattr(self, f"kp_xy_entry_{suffix}").get())
+                self.kd_xy = float(getattr(self, f"kd_xy_entry_{suffix}").get())
+                self.ki_xy = float(getattr(self, f"ki_xy_entry_{suffix}").get())
+                
+                self.kp_z = float(getattr(self, f"kp_z_entry_{suffix}").get())
+                self.kd_z = float(getattr(self, f"kd_z_entry_{suffix}").get())
+                self.ki_z = float(getattr(self, f"ki_z_entry_{suffix}").get())
+                
+                
+                self.kp_yaw = float(getattr(self, f"kp_yaw_entry_{suffix}").get())
+                self.kd_yaw = float(getattr(self, f"kd_yaw_entry_{suffix}").get())
+                self.ki_yaw = float(getattr(self, f"ki_yaw_entry_{suffix}").get())
+                
+                self.gains.data = [
                         indicator,
                         self.kp_xy,
                         self.kd_xy,
@@ -406,6 +431,13 @@ class WaypointGui:
                         self.kp_yaw,
                         self.kd_yaw,
                         self.ki_yaw
+                    ]
+
+            elif suffix == '3':
+                self.max_linear_velocity  = float(getattr(self,"max_linear_velocity").get())
+                self.gains.data = [
+                        indicator,
+                        self.max_linear_velocity
                     ]
             
             self.pub9.publish(self.gains)
