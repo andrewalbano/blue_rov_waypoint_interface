@@ -142,6 +142,11 @@ class WaypointGui:
         self.PWM_pid_gains= LabelFrame(self.waypoints_frame, text="PWM PID Gains")
         self.PWM_pid_gains.grid(row=2, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
 
+        # add waypoints frame row 2 column 2
+        self.velocity_testing = LabelFrame(self.waypoints_frame, text="velocity setpoint testing")
+        self.velocity_testing.grid(row=2, column=2, columnspan = 2, padx=5, pady=5, sticky="nsew")
+
+
     
 
 
@@ -152,6 +157,7 @@ class WaypointGui:
         self.create_pid_gains(self.position_pid_gains,'1')
         self.create_pid_gains(self.PWM_pid_gains,'2')
         self.create_params(self.params,'3')
+        self.create_velocity_setpoint(self.velocity_testing,'4')
 
 
 
@@ -329,6 +335,39 @@ class WaypointGui:
         submit_button = Button(frame, text=f"Submit Waypoint", command=lambda: self.submit_waypoint(suffix))
         submit_button.grid(row=5, column=1, columnspan=2,pady=5)
 
+    def create_velocity_setpoint(self, frame, suffix):
+        """ Helper function to create labeled entry widgets """
+        # row 1 
+        vx_label = Label(frame, text="x velocity (m/s)")
+        vx_label.grid(row=0, column=0, padx=5, pady=5)
+        setattr(self, f"vx", Entry(frame, width = 10))
+        getattr(self, f"vx").grid(row=0, column=1, padx=5, pady=5)
+
+
+
+        vy_label = Label(frame, text="y velocity (m/s)")
+        vy_label.grid(row=1, column=0, padx=5, pady=5)
+        setattr(self, f"vy", Entry(frame, width = 10))
+        getattr(self, f"vy").grid(row=1, column=1, padx=5, pady=5)
+
+
+        vz_label = Label(frame, text="z velocity (m/s)")
+        vz_label.grid(row=2, column=0, padx=5, pady=5)
+        setattr(self, f"vz", Entry(frame, width = 10))
+        getattr(self, f"vz").grid(row=2, column=1, padx=5, pady=5)
+
+        vyaw_label = Label(frame, text="angular velocity (degree/s)")
+        vyaw_label.grid(row=3, column=0, padx=5, pady=5)
+        setattr(self, f"vyaw", Entry(frame, width = 10))
+        getattr(self, f"vyaw").grid(row=3, column=1, padx=5, pady=5)
+
+
+        submit_velocity_button = Button(frame, text=f"Submit velocity setpoint", command=lambda: self.submit_gains(suffix))
+        submit_velocity_button.grid(row= 4, column=0,pady=10)
+
+
+    
+
 
     def create_params(self, frame, suffix):
         """ Helper function to create labeled entry widgets """
@@ -419,6 +458,9 @@ class WaypointGui:
                 indicator = 3
                 rospy.loginfo("Sending new parameters")
                 
+            elif suffix == '4':
+                indicator = 4
+                rospy.loginfo("Invoking velocity controller and sending veloity setpoints")
 
             if suffix  == '1' or suffix =='2':
                 self.kp_xy = float(getattr(self, f"kp_xy_entry_{suffix}").get())
@@ -457,6 +499,20 @@ class WaypointGui:
                         self.min_pwm,
                         self.max_pwm
                     ]
+                
+            elif suffix == '4':
+                self.vx  = float(getattr(self,"vx").get())
+                self.vy  = float(getattr(self,"vy").get())
+                self.vz  = float(getattr(self,"vz").get())
+                self.vyaw  = float(getattr(self,"vyaw").get())
+                self.gains.data = [
+                        indicator,
+                        self.vx,
+                        self.vy,
+                        self.vz,
+                        self.vyaw
+                    ]
+            
             
             self.pub9.publish(self.gains)
 
