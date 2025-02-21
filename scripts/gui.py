@@ -450,7 +450,7 @@ class WaypointGui:
             elif suffix == '3':
                 self.max_linear_velocity  = float(getattr(self,"max_linear_velocity").get())
                 self.min_pwm  = float(getattr(self,"min_pwm").get())
-                self.max_pwm  = float(getattr(self,"min_pwm").get())
+                self.max_pwm  = float(getattr(self,"max_pwm").get())
                 self.gains.data = [
                         indicator,
                         self.max_linear_velocity,
