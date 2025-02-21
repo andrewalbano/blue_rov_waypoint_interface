@@ -504,7 +504,7 @@ class WaypointGui:
                 self.vx  = float(getattr(self,"vx").get())
                 self.vy  = float(getattr(self,"vy").get())
                 self.vz  = float(getattr(self,"vz").get())
-                self.vyaw  = float(getattr(self,"vyaw").get())
+                self.vyaw  = float(getattr(self,"vyaw").get())*np.pi/180
                 self.gains.data = [
                         indicator,
                         self.vx,
