@@ -25,6 +25,7 @@ class WaypointGui:
 
         self.gains = Float32MultiArray()
         self.gains.data = [
+            0,
             self.kp_xy,
             self.kd_xy,
             self.ki_xy,
@@ -126,19 +127,26 @@ class WaypointGui:
         self.add_waypoint_frame_3= LabelFrame(self.waypoints_frame, text="Add a waypoint relative to \nthe current pose")
         self.add_waypoint_frame_3.grid(row=0, column=2, padx=5, pady=5, sticky="nsew")
 
-        # add waypoints frame row 2 column 2
-        self.pid_gains= LabelFrame(self.waypoints_frame, text="PID Gains")
-        self.pid_gains.grid(row=1, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
+        # add waypoints frame row 2 column 1
+        self.position_pid_gains= LabelFrame(self.waypoints_frame, text="Position PID Gains")
+        self.position_pid_gains.grid(row=1, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
+        # add waypoints frame row 3 column 1
+        self.PWM_pid_gains= LabelFrame(self.waypoints_frame, text="PWM PID Gains")
+        self.PWM_pid_gains.grid(row=2, column=0, columnspan = 2, padx=5, pady=5, sticky="nsew")
 
-        # add waypoints frame row 2 column 2
-        # currently empty 
+    
 
 
         # Create fields for waypoint 1 and 2
         self.create_waypoint_fields(self.add_waypoint_frame_1, '1')
         self.create_waypoint_fields(self.add_waypoint_frame_2, '2')
         self.create_waypoint_fields(self.add_waypoint_frame_3, '3')
-        self.create_pid_gains(self.pid_gains)
+        self.create_pid_gains(self.position_pid_gains,'1')
+        self.create_pid_gains(self.PWM_pid_gains,'2')
+
+
+
+
 
         # Add buttons beside the waypoint frames
         # Main Frame row 2
@@ -278,41 +286,41 @@ class WaypointGui:
         """ Helper function to create labeled entry widgets """
         x_label = Label(frame, text="X:")
         x_label.grid(row=0, column=0, padx=5, pady=5)
-        setattr(self, f"x{suffix}_entry", Entry(frame))
+        setattr(self, f"x{suffix}_entry", Entry(frame, width = 10))
         getattr(self, f"x{suffix}_entry").grid(row=0, column=1, padx=5, pady=5)
 
         y_label = Label(frame, text="Y:")
         y_label.grid(row=1, column=0, padx=5, pady=5)
-        setattr(self, f"y{suffix}_entry", Entry(frame))
+        setattr(self, f"y{suffix}_entry", Entry(frame, width = 10))
         getattr(self, f"y{suffix}_entry").grid(row=1, column=1, padx=5, pady=5)
 
         z_label = Label(frame, text="Z:")
         z_label.grid(row=2, column=0, padx=5, pady=5)
-        setattr(self, f"z{suffix}_entry", Entry(frame))
+        setattr(self, f"z{suffix}_entry", Entry(frame, width = 10))
         getattr(self, f"z{suffix}_entry").grid(row=2, column=1, padx=5, pady=5)
 
-        roll_label = Label(frame, text="Roll:")
-        roll_label.grid(row=3, column=0, padx=5, pady=5)
-        setattr(self, f"roll{suffix}_entry", Entry(frame))
-        getattr(self, f"roll{suffix}_entry").grid(row=3, column=1, padx=5, pady=5)
+        # roll_label = Label(frame, text="Roll:")
+        # roll_label.grid(row=3, column=0, padx=5, pady=5)
+        # setattr(self, f"roll{suffix}_entry", Entry(frame, width = 10))
+        # getattr(self, f"roll{suffix}_entry").grid(row=3, column=1, padx=5, pady=5)
 
-        pitch_label = Label(frame, text="Pitch:")
-        pitch_label.grid(row=4, column=0, padx=5, pady=5)
-        setattr(self, f"pitch{suffix}_entry", Entry(frame))
-        getattr(self, f"pitch{suffix}_entry").grid(row=4, column=1, padx=5, pady=5)
+        # pitch_label = Label(frame, text="Pitch:")
+        # pitch_label.grid(row=4, column=0, padx=5, pady=5)
+        # setattr(self, f"pitch{suffix}_entry", Entry(frame, width = 10))
+        # getattr(self, f"pitch{suffix}_entry").grid(row=4, column=1, padx=5, pady=5)
 
         yaw_label = Label(frame, text="Yaw:")
-        yaw_label.grid(row=5, column=0, padx=5, pady=5)
-        setattr(self, f"yaw{suffix}_entry", Entry(frame))
-        getattr(self, f"yaw{suffix}_entry").grid(row=5, column=1, padx=5, pady=5)
+        yaw_label.grid(row=3, column=0, padx=5, pady=5)
+        setattr(self, f"yaw{suffix}_entry", Entry(frame, width = 10))
+        getattr(self, f"yaw{suffix}_entry").grid(row=3, column=1, padx=5, pady=5)
 
         visualize_button = Button(frame, text=f"Visualize Waypoint", command=lambda: self.visualize_potential_waypoint(suffix))
-        visualize_button.grid(row=6, column=1, columnspan=2, pady=5)
+        visualize_button.grid(row=4, column=1, columnspan=2, pady=5)
 
         submit_button = Button(frame, text=f"Submit Waypoint", command=lambda: self.submit_waypoint(suffix))
-        submit_button.grid(row=7, column=1, columnspan=2,pady=5)
+        submit_button.grid(row=5, column=1, columnspan=2,pady=5)
 
-    def create_pid_gains(self, frame):
+    def create_pid_gains(self, frame,suffix):
         """ Helper function to create labeled entry widgets """
         # row 1 
         kp_label = Label(frame, text="kp")
@@ -329,57 +337,66 @@ class WaypointGui:
         # row 2
         xy_label = Label(frame, text="xy")
         xy_label.grid(row=1, column=0, padx=5, pady=5)
-        setattr(self, "kp_xy_entry", Entry(frame))
-        getattr(self, "kp_xy_entry").grid(row=1, column=1, padx=5, pady=5)
-        setattr(self, "kd_xy_entry", Entry(frame))
-        getattr(self, "kd_xy_entry").grid(row=1, column=2, padx=5, pady=5)
-        setattr(self, "ki_xy_entry", Entry(frame))
-        getattr(self, "ki_xy_entry").grid(row=1, column=3, padx=5, pady=5)
+        setattr(self, f"kp_xy_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kp_xy_entry_{suffix}").grid(row=1, column=1, padx=5, pady=5)
+        setattr(self, f"kd_xy_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kd_xy_entry_{suffix}").grid(row=1, column=2, padx=5, pady=5)
+        setattr(self, f"ki_xy_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"ki_xy_entry_{suffix}").grid(row=1, column=3, padx=5, pady=5)
 
          # row 3
         z_label = Label(frame, text="z")
         z_label.grid(row=2, column=0, padx=5, pady=5)
-        setattr(self, "kp_z_entry", Entry(frame))
-        getattr(self, "kp_z_entry").grid(row=2, column=1, padx=5, pady=5)
-        setattr(self, "kd_z_entry", Entry(frame))
-        getattr(self, "kd_z_entry").grid(row=2, column=2, padx=5, pady=5)
-        setattr(self, "ki_z_entry", Entry(frame))
-        getattr(self, "ki_z_entry").grid(row=2, column=3, padx=5, pady=5)
+        setattr(self, f"kp_z_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kp_z_entry_{suffix}").grid(row=2, column=1, padx=5, pady=5)
+        setattr(self, f"kd_z_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kd_z_entry_{suffix}").grid(row=2, column=2, padx=5, pady=5)
+        setattr(self, f"ki_z_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"ki_z_entry_{suffix}").grid(row=2, column=3, padx=5, pady=5)
 
          # row 4
         yaw_label = Label(frame, text="yaw")
         yaw_label.grid(row=3, column=0, padx=5, pady=5)
-        setattr(self, "kp_yaw_entry", Entry(frame))
-        getattr(self, "kp_yaw_entry").grid(row=3, column=1, padx=5, pady=5)
-        setattr(self, "kd_yaw_entry", Entry(frame))
-        getattr(self, "kd_yaw_entry").grid(row=3, column=2, padx=5, pady=5)
-        setattr(self, "ki_yaw_entry", Entry(frame))
-        getattr(self, "ki_yaw_entry").grid(row=3, column=3, padx=5, pady=5)
+        setattr(self, f"kp_yaw_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kp_yaw_entry_{suffix}").grid(row=3, column=1, padx=5, pady=5)
+        setattr(self, f"kd_yaw_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kd_yaw_entry_{suffix}").grid(row=3, column=2, padx=5, pady=5)
+        setattr(self, f"ki_yaw_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"ki_yaw_entry_{suffix}").grid(row=3, column=3, padx=5, pady=5)
 
-        submit_gains_button = Button(frame, text=f"Submit gains", command=lambda: self.submit_gains())
+        submit_gains_button = Button(frame, text=f"Submit gains", command=lambda: self.submit_gains(suffix))
         submit_gains_button.grid(row=4, column=3,pady=10)
     
     
-    def submit_gains(self):
+    def submit_gains(self,suffix):
         """ Extract values from entries and publish them """
         try:
             self.gains.data.clear()
 
-            self.kp_xy = float(getattr(self, "kp_xy_entry").get())
-            self.kd_xy = float(getattr(self, "kd_xy_entry").get())
-            self.ki_xy = float(getattr(self, "ki_xy_entry").get())
+            self.kp_xy = float(getattr(self, f"kp_xy_entry_{suffix}").get())
+            self.kd_xy = float(getattr(self, f"kd_xy_entry_{suffix}").get())
+            self.ki_xy = float(getattr(self, f"ki_xy_entry_{suffix}").get())
             
-            self.kp_z = float(getattr(self, "kp_z_entry").get())
-            self.kd_z = float(getattr(self, "kd_z_entry").get())
-            self.ki_z = float(getattr(self, "ki_z_entry").get())
+            self.kp_z = float(getattr(self, f"kp_z_entry_{suffix}").get())
+            self.kd_z = float(getattr(self, f"kd_z_entry_{suffix}").get())
+            self.ki_z = float(getattr(self, f"ki_z_entry_{suffix}").get())
             
             
-            self.kp_yaw = float(getattr(self, "kp_yaw_entry").get())
-            self.kd_yaw = float(getattr(self, "kd_yaw_entry").get())
-            self.ki_yaw = float(getattr(self, "ki_yaw_entry").get())
+            self.kp_yaw = float(getattr(self, f"kp_yaw_entry_{suffix}").get())
+            self.kd_yaw = float(getattr(self, f"kd_yaw_entry_{suffix}").get())
+            self.ki_yaw = float(getattr(self, f"ki_yaw_entry_{suffix}").get())
             
 
+            # indicator indicates which pid gains are bing changed without creating a new topic
+            if suffix=='1':
+                indicator = 1
+                rospy.loginfo("Sending new controller gains for position controller")
+            elif suffix == '2':
+                indicator = 2
+                rospy.loginfo("Sending new controller gains for PWM controller")
+
             self.gains.data = [
+                        indicator,
                         self.kp_xy,
                         self.kd_xy,
                         self.ki_xy,
@@ -393,7 +410,8 @@ class WaypointGui:
             
             self.pub9.publish(self.gains)
 
-            rospy.loginfo("Sending new controller gains")
+
+            # rospy.loginfo("Sending new controller gains")
             # rospy.loginfo(self.gains)
         except ValueError as ve:
             rospy.logerr(f"Invalid input for controller gains: {ve}")
@@ -469,8 +487,10 @@ class WaypointGui:
             x = float(getattr(self, f"x{suffix}_entry").get())
             y = float(getattr(self, f"y{suffix}_entry").get())
             z = float(getattr(self, f"z{suffix}_entry").get())
-            roll = float(getattr(self, f"roll{suffix}_entry").get())*(np.pi / 180)
-            pitch = float(getattr(self, f"pitch{suffix}_entry").get())*(np.pi / 180)
+            # roll = float(getattr(self, f"roll{suffix}_entry").get())*(np.pi / 180)
+            # pitch = float(getattr(self, f"pitch{suffix}_entry").get())*(np.pi / 180)
+            roll =0
+            pitch = 0
             yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
 
 
@@ -562,8 +582,10 @@ class WaypointGui:
             x = float(getattr(self, f"x{suffix}_entry").get())
             y = float(getattr(self, f"y{suffix}_entry").get())
             z = float(getattr(self, f"z{suffix}_entry").get())
-            roll = float(getattr(self, f"roll{suffix}_entry").get())*(np.pi / 180)
-            pitch = float(getattr(self, f"pitch{suffix}_entry").get())*(np.pi / 180)
+            # roll = float(getattr(self, f"roll{suffix}_entry").get())*(np.pi / 180)
+            # pitch = float(getattr(self, f"pitch{suffix}_entry").get())*(np.pi / 180)
+            roll = 0
+            pitch =0
             yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
 
 
