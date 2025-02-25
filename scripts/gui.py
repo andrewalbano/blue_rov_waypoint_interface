@@ -307,7 +307,10 @@ class WaypointGui:
         trans_matrix = translation_matrix([self.current_pose.pose.pose.position.x,self.current_pose.pose.pose.position.y,self.current_pose.pose.pose.position.z])
         roll, pitch, yaw = euler_from_quaternion([self.current_pose.pose.pose.orientation.x, self.current_pose.pose.pose.orientation.y, self.current_pose.pose.pose.orientation.z, self.current_pose.pose.pose.orientation.w])
         rot_matrix = euler_matrix(roll,pitch,yaw)
-        transform  = concatenate_matrices(rot_matrix, trans_matrix)
+        # transform  = concatenate_matrices(rot_matrix, trans_matrix)
+        transform  = concatenate_matrices(trans_matrix,rot_matrix)
+        rospy.loginfo(transform)
+
         return transform
         # rospy.loginfo(self.current_pose_transform )
 
