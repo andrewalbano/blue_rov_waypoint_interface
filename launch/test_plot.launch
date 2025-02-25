@@ -1,13 +1,13 @@
 <launch>
 
     <!--  launching waypoint gui-->
-    <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui.py" output="screen"/>
+    <!-- <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui.py" output="screen"/> -->
     
     <!-- launch  MOTION_CONTROLLER  -->
     <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_v5.py" output="screen"/> -->
     
     <!-- launch  MOTION_CONTROLLER  -->
-    <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_hardware_3.py" output="screen"/>
+    <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_hardware_3.py" output="screen"/> -->
     <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="test_signal_send.py" output="screen"/> -->
     <!-- <node name="qgc_position_test" pkg="blue_rov_motion_controller" type="get_qgc_position.py" output="screen"/> -->
    
@@ -21,23 +21,26 @@
     
 
     <!-- Start the simulation -->
-    <node name="get_ned_test" pkg="simulating_nodes" type="get_ned.py" output="screen" />
+    <!-- <node name="get_ned_test" pkg="simulating_nodes" type="get_ned.py" output="screen" />
     <node name="get_attitude_test" pkg="simulating_nodes" type="get_attitude.py" output="screen" />
-    <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />
+    <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />  -->
     <node name="velocity_plot" pkg="blue_rov_motion_controller" type="setpoint_plotting.py" output="screen"/>
- 
+
+    <node name="simulate_velocity_data" pkg="simulating_nodes" type="test_setpoint_plotting.py" output="screen" /> 
+
+
 
      <!-- Static transform from mad to ned -->
-    <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>  
+    <!-- <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>   -->
     
     <!-- <node name="sim_velocity_output" pkg="simulating_nodes" type="sim_velocity_command.py" output="screen"/> -->
     
     <!-- Launch rviz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz.rviz" />
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz.rviz" /> -->
 
     
     <!-- Publish robot description -->
-    <param name="robot_description" command="$(find xacro)/xacro '$(find simulating_nodes)/model/cube_bot.xacro'" />
+    <!-- <param name="robot_description" command="$(find xacro)/xacro '$(find simulating_nodes)/model/cube_bot.xacro'" /> -->
     
 </launch>  
 

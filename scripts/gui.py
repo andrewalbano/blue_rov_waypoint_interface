@@ -11,9 +11,13 @@ from nav_msgs.msg import Path
 class WaypointGui:  
     def __init__(self, master):
         # Initialize variables 
-        self.kp_xy = 0.0
-        self.kd_xy = 0.0
-        self.ki_xy = 0.0
+        self.kp_x = 0.0
+        self.kd_x = 0.0
+        self.ki_x = 0.0
+
+        self.kp_y = 0.0
+        self.kd_y = 0.0
+        self.ki_y = 0.0
 
         self.kp_z = 0.0
         self.kd_z = 0.0
@@ -26,9 +30,12 @@ class WaypointGui:
         self.gains = Float32MultiArray()
         self.gains.data = [
             0,
-            self.kp_xy,
-            self.kd_xy,
-            self.ki_xy,
+            self.kp_x,
+            self.kd_x,
+            self.ki_x,
+            self.kp_y,
+            self.kd_y,
+            self.ki_y,
             self.kp_z,
             self.kd_z,
             self.ki_z,
@@ -286,7 +293,8 @@ class WaypointGui:
         # Initialize subscriber
         # Subscribe to the local position topic
         # self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
-        self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
+        # self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
+        self.sub1 = rospy.Subscriber('/state', PoseWithCovarianceStamped, self.position_callback)
 
         # self.disable_motion_control()   
     
@@ -403,6 +411,7 @@ class WaypointGui:
         getattr(self, f"max_pwm_entry").grid(row=2, column=1, padx=5, pady=5)
 
 
+
         submit_params_button = Button(frame, text=f"Submit params", command=lambda: self.submit_gains(suffix))
 
         submit_params_button.grid(row= 3, column=0,pady=10)
@@ -424,37 +433,56 @@ class WaypointGui:
 
 
         # row 2
-        xy_label = Label(frame, text="xy")
-        xy_label.grid(row=1, column=0, padx=5, pady=5)
-        setattr(self, f"kp_xy_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"kp_xy_entry_{suffix}").grid(row=1, column=1, padx=5, pady=5)
-        setattr(self, f"kd_xy_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"kd_xy_entry_{suffix}").grid(row=1, column=2, padx=5, pady=5)
-        setattr(self, f"ki_xy_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"ki_xy_entry_{suffix}").grid(row=1, column=3, padx=5, pady=5)
+        x_label = Label(frame, text="x")
+        x_label.grid(row=1, column=0, padx=5, pady=5)
+        setattr(self, f"kp_x_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kp_x_entry_{suffix}").grid(row=1, column=1, padx=5, pady=5)
+        setattr(self, f"kd_x_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kd_x_entry_{suffix}").grid(row=1, column=2, padx=5, pady=5)
+        setattr(self, f"ki_x_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"ki_x_entry_{suffix}").grid(row=1, column=3, padx=5, pady=5)
+
+        # row 2
+        y_label = Label(frame, text="y")
+        y_label.grid(row=2, column=0, padx=5, pady=5)
+        setattr(self, f"kp_y_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kp_y_entry_{suffix}").grid(row=2, column=1, padx=5, pady=5)
+        setattr(self, f"kd_y_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"kd_y_entry_{suffix}").grid(row=2, column=2, padx=5, pady=5)
+        setattr(self, f"ki_y_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"ki_y_entry_{suffix}").grid(row=2, column=3, padx=5, pady=5)
+
 
          # row 3
         z_label = Label(frame, text="z")
-        z_label.grid(row=2, column=0, padx=5, pady=5)
+        z_label.grid(row=3, column=0, padx=5, pady=5)
         setattr(self, f"kp_z_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"kp_z_entry_{suffix}").grid(row=2, column=1, padx=5, pady=5)
+        getattr(self, f"kp_z_entry_{suffix}").grid(row=3, column=1, padx=5, pady=5)
         setattr(self, f"kd_z_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"kd_z_entry_{suffix}").grid(row=2, column=2, padx=5, pady=5)
+        getattr(self, f"kd_z_entry_{suffix}").grid(row=3, column=2, padx=5, pady=5)
         setattr(self, f"ki_z_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"ki_z_entry_{suffix}").grid(row=2, column=3, padx=5, pady=5)
+        getattr(self, f"ki_z_entry_{suffix}").grid(row=3, column=3, padx=5, pady=5)
 
          # row 4
         yaw_label = Label(frame, text="yaw")
-        yaw_label.grid(row=3, column=0, padx=5, pady=5)
+        yaw_label.grid(row=4, column=0, padx=5, pady=5)
         setattr(self, f"kp_yaw_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"kp_yaw_entry_{suffix}").grid(row=3, column=1, padx=5, pady=5)
+        getattr(self, f"kp_yaw_entry_{suffix}").grid(row=4, column=1, padx=5, pady=5)
         setattr(self, f"kd_yaw_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"kd_yaw_entry_{suffix}").grid(row=3, column=2, padx=5, pady=5)
+        getattr(self, f"kd_yaw_entry_{suffix}").grid(row=4, column=2, padx=5, pady=5)
         setattr(self, f"ki_yaw_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"ki_yaw_entry_{suffix}").grid(row=3, column=3, padx=5, pady=5)
+        getattr(self, f"ki_yaw_entry_{suffix}").grid(row=4, column=3, padx=5, pady=5)
 
         submit_gains_button = Button(frame, text=f"Submit gains", command=lambda: self.submit_gains(suffix))
-        submit_gains_button.grid(row=4, column=3,pady=10)
+        submit_gains_button.grid(row=5, column=3,pady=10)
+
+         # row 5
+        rc_filter_gain_label = Label(frame, text="rc filter gain")
+        rc_filter_gain_label.grid(row=6, column=0,columnspan=2, padx=5, pady=5)
+        setattr(self, f"rc_filter_entry_{suffix}", Entry(frame, width = 10))
+        getattr(self, f"rc_filter_entry_{suffix}").grid(row=6, column=2, padx=5, pady=5)
+    
+    
     
     
     def submit_gains(self,suffix):
@@ -483,9 +511,13 @@ class WaypointGui:
                     rospy.loginfo("Disabling velocity testing")
 
             if suffix  == '1' or suffix =='2':
-                self.kp_xy = float(getattr(self, f"kp_xy_entry_{suffix}").get())
-                self.kd_xy = float(getattr(self, f"kd_xy_entry_{suffix}").get())
-                self.ki_xy = float(getattr(self, f"ki_xy_entry_{suffix}").get())
+                self.kp_x = float(getattr(self, f"kp_x_entry_{suffix}").get())
+                self.kd_x = float(getattr(self, f"kd_x_entry_{suffix}").get())
+                self.ki_x = float(getattr(self, f"ki_x_entry_{suffix}").get())
+
+                self.kp_y = float(getattr(self, f"kp_y_entry_{suffix}").get())
+                self.kd_y = float(getattr(self, f"kd_y_entry_{suffix}").get())
+                self.ki_y = float(getattr(self, f"ki_y_entry_{suffix}").get())
                 
                 self.kp_z = float(getattr(self, f"kp_z_entry_{suffix}").get())
                 self.kd_z = float(getattr(self, f"kd_z_entry_{suffix}").get())
@@ -496,18 +528,27 @@ class WaypointGui:
                 self.kd_yaw = float(getattr(self, f"kd_yaw_entry_{suffix}").get())
                 self.ki_yaw = float(getattr(self, f"ki_yaw_entry_{suffix}").get())
                 
+                self.rc_filter_gain = float(getattr(self, f"rc_filter_entry_{suffix}").get())
+
+               
                 self.gains.data = [
                         indicator,
-                        self.kp_xy,
-                        self.kd_xy,
-                        self.ki_xy,
+                        self.kp_x,
+                        self.kd_x,
+                        self.ki_x,
+                        self.kp_y,
+                        self.kd_y,
+                        self.ki_y,
                         self.kp_z,
                         self.kd_z,
                         self.ki_z,
                         self.kp_yaw,
                         self.kd_yaw,
-                        self.ki_yaw
+                        self.ki_yaw,
+                        self.rc_filter_gain
                     ]
+         
+
 
             elif suffix == '3':
                 self.max_linear_velocity  = float(getattr(self,"max_linear_velocity_entry").get())
