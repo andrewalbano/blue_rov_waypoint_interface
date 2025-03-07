@@ -309,7 +309,7 @@ class WaypointGui:
         rot_matrix = euler_matrix(roll,pitch,yaw)
         # transform  = concatenate_matrices(rot_matrix, trans_matrix)
         transform  = concatenate_matrices(trans_matrix,rot_matrix)
-        rospy.loginfo(transform)
+        # rospy.loginfo(transform)
 
         return transform
         # rospy.loginfo(self.current_pose_transform )
@@ -916,7 +916,7 @@ class WaypointGui:
 
     def generate_square(self):
         # length, width, depth
-        l, w, d = 5, 5, 0
+        l, w, d = 4, 4, self.current_pose.pose.pose.position.z
 
         self.add_defined_waypoint(x=0,y=0,z=d,roll=0,pitch=0,yaw =0)
         self.add_defined_waypoint(x=l,y=0,z=d,roll=0,pitch=0,yaw =0)
