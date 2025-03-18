@@ -286,7 +286,8 @@ class WaypointGui:
         # Initialize subscriber
         # Subscribe to the local position topic
         # self.sub1 = rospy.Subscriber('current_state_test', PoseWithCovarianceStamped, self.position_callback)
-        self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
+        # self.sub1 = rospy.Subscriber('/dvl/local_position', PoseWithCovarianceStamped, self.position_callback)
+        self.sub1 = rospy.Subscriber('/state', PoseWithCovarianceStamped, self.position_callback)
 
         # self.disable_motion_control()   
     
