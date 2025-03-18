@@ -7,7 +7,7 @@
     <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_v5.py" output="screen"/> -->
     
     <!-- launch  MOTION_CONTROLLER  -->
-    <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_hardware_4.py" output="screen"/>
+    <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_hardware_5.py" output="screen"/>
     <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="test_signal_send.py" output="screen"/> -->
     <!-- <node name="qgc_position_test" pkg="blue_rov_motion_controller" type="get_qgc_position.py" output="screen"/> -->
    

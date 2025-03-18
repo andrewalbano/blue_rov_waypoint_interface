@@ -160,15 +160,9 @@ class WaypointGui:
         self.velocity_testing.grid(row=2, column=2, columnspan = 2, padx=5, pady=5, sticky="nsew")
 
 
-
-        # add waypoints frame row 2 column 2
-        self.joystick_testing = LabelFrame(self.waypoints_frame, text="joystick setpoint testing")
-        self.joystick_testing.grid(row=0, column=3, columnspan = 2, padx=5, pady=5, sticky="nsew")
-
-
-
-
     
+
+
         # Create fields for waypoint 1 and 2
         self.create_waypoint_fields(self.add_waypoint_frame_1, '1')
         self.create_waypoint_fields(self.add_waypoint_frame_2, '2')
@@ -177,7 +171,6 @@ class WaypointGui:
         self.create_pid_gains(self.PWM_pid_gains,'2')
         self.create_params(self.params,'3')
         self.create_velocity_setpoint(self.velocity_testing,'4')
-        self.create_joystick_setpoint(self.joystick_testing,'5')
 
 
 
@@ -264,7 +257,6 @@ class WaypointGui:
         self.make_square= Button(self.generate_waypoints_frame, text="Generate Square", command=self.generate_square)
         self.make_square.grid(row=row_index, column=column_index, columnspan=column_span, sticky="ew",  padx=2, pady=2)
         row_index +=1
-
 
 
 
@@ -378,8 +370,7 @@ class WaypointGui:
         getattr(self, f"vy_entry").grid(row=1, column=1, padx=5, pady=5)
 
 
-        # vz_label = Label(frame, text="z velocity (m/s)")
-        vz_label = Label(frame, text="z depth")
+        vz_label = Label(frame, text="z velocity (m/s)")
         vz_label.grid(row=2, column=0, padx=5, pady=5)
         setattr(self, f"vz_entry", Entry(frame, width = 10))
         getattr(self, f"vz_entry").grid(row=2, column=1, padx=5, pady=5)
@@ -399,43 +390,6 @@ class WaypointGui:
         submit_velocity_button = Button(frame, text=f"Submit velocity setpoint", command=lambda: self.submit_gains(suffix))
         submit_velocity_button.grid(row= 5, column=0,pady=10)
 
-    def create_joystick_setpoint(self, frame, suffix):
-        """ Helper function to create labeled entry widgets """
-
-        # row 1 
-        x_label = Label(frame, text="x = (-1000, 1000)")
-        x_label.grid(row=0, column=0, padx=5, pady=5)
-        setattr(self, f"x_entry", Entry(frame, width = 10))
-        getattr(self, f"x_entry").grid(row=0, column=1, padx=5, pady=5)
-
-
-
-        y_label = Label(frame, text="y = (-1000, 1000)")
-        y_label.grid(row=1, column=0, padx=5, pady=5)
-        setattr(self, f"y_entry", Entry(frame, width = 10))
-        getattr(self, f"y_entry").grid(row=1, column=1, padx=5, pady=5)
-
-
-        # z_label = Label(frame, text="z = (0, 1000)")
-        z_label = Label(frame, text="z depth")
-        z_label.grid(row=2, column=0, padx=5, pady=5)
-        setattr(self, f"z_entry", Entry(frame, width = 10))
-        getattr(self, f"z_entry").grid(row=2, column=1, padx=5, pady=5)
-
-        yaw_label = Label(frame, text="yaw = (-1000, 1000)")
-        yaw_label.grid(row=3, column=0, padx=5, pady=5)
-        setattr(self, f"yaw_entry", Entry(frame, width = 10))
-        getattr(self, f"yaw_entry").grid(row=3, column=1, padx=5, pady=5)
-
-        joystick_testing_toggle_label = Label(frame, text="on / off")
-        joystick_testing_toggle_label.grid(row=4, column=0, padx=5, pady=5)
-        setattr(self, f"joystick_testing_toggle_entry", Entry(frame, width = 10))
-        getattr(self, f"joystick_testing_toggle_entry").grid(row=4, column=1, padx=5, pady=5)
-
-
-
-        submit_joystick_button = Button(frame, text=f"Submit joystick setpoints", command=lambda: self.submit_gains(suffix))
-        submit_joystick_button.grid(row= 5, column=0,pady=10)
 
     
 
@@ -559,15 +513,6 @@ class WaypointGui:
                     indicator = 5 # returns to normal mode
                     rospy.loginfo("Disabling velocity testing")
 
-            elif suffix == '5':
-                self.joystick_testing_toggle  = getattr(self,"joystick_testing_toggle_entry").get()
-                if self.joystick_testing_toggle =="on":
-                    indicator = 6
-                    rospy.loginfo("Invoking joystick controller testing mode and sending setpoints")
-                else: 
-                    indicator = 7 # returns to normal mode
-                    rospy.loginfo("Disabling joystick mode")
-
             if suffix  == '1' or suffix =='2':
                 self.kp_x = float(getattr(self, f"kp_x_entry_{suffix}").get())
                 self.kd_x = float(getattr(self, f"kd_x_entry_{suffix}").get())
@@ -632,20 +577,7 @@ class WaypointGui:
                         self.vz,
                         self.vyaw
                     ]
-            elif suffix == '5':
-                self.x_joystick = float(getattr(self,"x_entry").get())
-                self.y_joystick = float(getattr(self,"y_entry").get())
-                self.z_joystick = float(getattr(self,"z_entry").get())
-                self.yaw_joystick = float(getattr(self,"yaw_entry").get())
             
-                self.gains.data = [
-                        indicator,
-                        self.x_joystick,
-                        self.y_joystick,
-                        self.z_joystick,
-                        self.yaw_joystick
-                    ]
-                rospy.loginfo(self.gains.data[0])
             
             self.pub9.publish(self.gains)
 
