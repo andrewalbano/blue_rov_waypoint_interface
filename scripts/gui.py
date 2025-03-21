@@ -437,8 +437,6 @@ class WaypointGui:
         submit_joystick_button = Button(frame, text=f"Submit joystick setpoints", command=lambda: self.submit_gains(suffix))
         submit_joystick_button.grid(row= 5, column=0,pady=10)
 
-    
-
 
     def create_params(self, frame, suffix):
         """ Helper function to create labeled entry widgets """
@@ -525,11 +523,11 @@ class WaypointGui:
         submit_gains_button = Button(frame, text=f"Submit gains", command=lambda: self.submit_gains(suffix))
         submit_gains_button.grid(row=5, column=3,pady=10)
 
-         # row 5
-        rc_filter_gain_label = Label(frame, text="rc filter gain")
-        rc_filter_gain_label.grid(row=6, column=0,columnspan=2, padx=5, pady=5)
-        setattr(self, f"rc_filter_entry_{suffix}", Entry(frame, width = 10))
-        getattr(self, f"rc_filter_entry_{suffix}").grid(row=6, column=2, padx=5, pady=5)
+        #  # row 5
+        # rc_filter_gain_label = Label(frame, text="rc filter gain")
+        # rc_filter_gain_label.grid(row=6, column=0,columnspan=2, padx=5, pady=5)
+        # setattr(self, f"rc_filter_entry_{suffix}", Entry(frame, width = 10))
+        # getattr(self, f"rc_filter_entry_{suffix}").grid(row=6, column=2, padx=5, pady=5)
     
     
     
@@ -586,7 +584,8 @@ class WaypointGui:
                 self.kd_yaw = float(getattr(self, f"kd_yaw_entry_{suffix}").get())
                 self.ki_yaw = float(getattr(self, f"ki_yaw_entry_{suffix}").get())
                 
-                self.rc_filter_gain = float(getattr(self, f"rc_filter_entry_{suffix}").get())
+                # self.rc_filter_gain = float(getattr(self, f"rc_filter_entry_{suffix}").get())
+                self.rc_filter_gain = float(0) # no longer needed
 
                
                 self.gains.data = [
