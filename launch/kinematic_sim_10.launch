@@ -2,42 +2,38 @@
 
     <!--  launching waypoint gui-->
     <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui_2.py" output="screen"/>
-    
-    <!-- launch  MOTION_CONTROLLER  -->
-    <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller_v5.py" output="screen"/> -->
-    
+  
     <!-- launch  MOTION_CONTROLLER  -->
     <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller.py" output="screen"/>
-    <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="test_signal_send.py" output="screen"/> -->
-    <!-- <node name="qgc_position_test" pkg="blue_rov_motion_controller" type="get_qgc_position.py" output="screen"/> -->
+  
    
-
-
-
-    <!-- simulations for testing  -->
-
-    <!-- launch for static map transform -->
-    <!-- <node name="fixed_tf_broadcaster" pkg="blue_rov_waypoint_interface" type="fixed_tf_broadcaster.py" output="screen"/> -->
-    
-
-    <!-- Start the simulation -->
+    <!-- Start the simulation nodes-->
     <node name="get_ned_test" pkg="simulating_nodes" type="get_ned.py" output="screen" />
     <node name="get_attitude_test" pkg="simulating_nodes" type="get_attitude.py" output="screen" />
     <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />
-    <node name="velocity_plot" pkg="blue_rov_motion_controller" type="setpoint_plotting.py" output="screen"/>
     <!-- <node name="map_sim" pkg="simulating_nodes" type="map_sim.py" output="screen" /> -->
+    <node name="velocity_plot" pkg="blue_rov_motion_controller" type="setpoint_plotting.py" output="screen"/>
 
 
      <!-- Static transform from mad to ned -->
     <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>  
     
+    <!-- <node pkg="tf" type="static_transform_publisher" name="base2cam" args="0.15742 0.0 0 0 0 0 base_link camera_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2dvl" args="0.16443882752 0.004293588903 0.28362510322 0 0 0.05054822579625977 base_link dvl_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2bar" args="0.0 0.0 0.0 0 0 0 base_link bar_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2sonar" args="0.164107 0.10618 0.30638500108 0 0 0 base_link sonar_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2imu" args="0 0 0 0 0 0 base_link imu_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="tmpned2base" args="0.3 -0.2 0.5 0 0 0 NED base_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="ping360_stf" args="0.09 0.12531 -0.1216 0 0 0 base_link ping360_link 100"/>
+     -->
     <!-- <node name="sim_velocity_output" pkg="simulating_nodes" type="sim_velocity_command.py" output="screen"/> -->
     
     <!-- Launch rviz -->
     <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz.rviz" />
 
-    
+   
     <!-- Publish robot description -->
+    <!-- <param name="blue_rov_description" command="$(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/dummy.urdf.xacro'" /> -->
     <param name="robot_description" command="$(find xacro)/xacro '$(find simulating_nodes)/model/cube_bot.xacro'" />
     
 </launch>  
