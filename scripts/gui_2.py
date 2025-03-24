@@ -12,11 +12,18 @@ from nav_msgs.msg import Path
 #  should consider switching things from pose to poseStamped
 class WaypointGui:  
     def __init__(self, master):
-        self.velocity_setpoint_mode = False
+
+        # self.icon = PhotoImage(file="scripts/desktop_image_2.png")
+        self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
+     
+        # Set it as the window icon.
+        master.iconphoto(True, self.icon)
+        
         self.current_mode = "Disabled"
 
         self.controller_active = False
-        self.target_depth = None
+        self.plots_active = False
+       
 
         # dictionary for geting velocity mode field entries
         # Note:sometimes the names get complicated, for example getting field entry for depth from velocity mode vs other modes so i create a dictionary for each mode and extract the information this way 
@@ -24,7 +31,7 @@ class WaypointGui:
             "vx" : "vx_entry",
             "vy" : "vy_entry",
             "vz" : "vz_entry",
-            "vyaw" : "vz_entry",
+            "vyaw" : "vyaw_entry",
             "target_depth" : "depth_entry_vel_mode"
             }
         # dictionary for geting pwm mode field entries
@@ -148,6 +155,9 @@ class WaypointGui:
         self.create_pwm_frame()
         self.forget(self.pwm_mode_frame)
 
+        self.create_waypoint_mode_frame()
+        self.forget(self.waypoint_mode_frame)
+
 
    
        
@@ -199,7 +209,8 @@ class WaypointGui:
         self.pub8 = rospy.Publisher("hold_pose_waypoint", PoseStamped, queue_size=10)
         # publishes True when waypoint_index is reset
         self.pub9 = rospy.Publisher("controller_gains", Float32MultiArray, queue_size=10)
-
+        
+        self.pub11 = rospy.Publisher("toggle_velocity_plot", Bool, queue_size=10)
 
 
 
@@ -266,6 +277,18 @@ class WaypointGui:
             self.on_off_button = Button(self.on_off_frame, text="Activate Controller", command=self.activate_controller)
             
         self.on_off_button.grid(row=0, column= 0,padx=20, pady=20, sticky = "w")
+
+        # if self.plots_active:
+        #     # Deactivate button in on off frame
+        #     self.plots_button = Button(self.on_off_frame, text="Close Velocity Plot", command=self.close_plots)
+        
+        # elif not self.controller_active:
+        #     # Activate button in on off frame
+        #     self.plots_button = Button(self.on_off_frame, text="Show Velocity Plot", command=self.show_plots)
+            
+        # self.plots_button.grid(row=1, column= 0,padx=20, pady=20, sticky = "w")
+
+
      
 
     def activate_controller(self):
@@ -312,6 +335,7 @@ class WaypointGui:
         self.forget(self.joystick_mode_frame)
         self.forget(self.velocity_setpoint_mode_frame)
         self.forget(self.pwm_mode_frame)
+        self.forget(self.waypoint_mode_frame)
 
 
         # update status
@@ -319,6 +343,55 @@ class WaypointGui:
 
         # update on off button 
         self.create_on_off_frame()
+      
+    def show_plots(self):
+    
+
+        rospy.loginfo(f"Opening velocity plots")
+
+        self.plots_active = True
+        # Pubslish the new state
+        self.pub11.publish(self.plots_active)
+        
+       
+
+        # Erase the current frames
+        # self.forget(self.current_status_frame)
+        self.forget(self.on_off_frame)  
+
+        # update status
+        # self.create_status_frame()
+
+        # update on off button 
+        self.create_on_off_frame()
+
+        # create and display the frame that holds the controller modes
+        # self.create_controller_modes_frame()
+
+
+    def close_plots(self):
+
+        rospy.loginfo(f"Closing velocity plots")
+
+        self.plots_active = False
+        # Pubslish the new state
+        self.pub11.publish(self.plots_active)
+        
+       
+
+        # Erase the current frames
+        # self.forget(self.current_status_frame)
+        self.forget(self.on_off_frame)  
+
+        # update status
+        # self.create_status_frame()
+
+        # update on off button 
+        self.create_on_off_frame()
+
+        # create and display the frame that holds the controller modes
+        # self.create_controller_modes_frame()
+
       
 
     # controller modes selection
@@ -669,22 +742,6 @@ class WaypointGui:
         self.submit_pwm_button.grid(row = row_index, column=1,pady=5)    
 
 
-    def submit_target_depth_pwm_mode(self):
-        try:
-            indicator = 6
-            self.target_depth  = float(getattr(self,"depth_entry_pwm_mode").get())
-            rospy.loginfo("Sending target depth")
-            self.gains.data = [
-                    indicator,
-                    self.target_depth
-                ]
-            if self.current_mode == "manual pwm":
-                self.pub9.publish(self.gains)
-            else:
-                rospy.logwarn("velocity mode is not active")
-        except:
-            rospy.logerr("Encountered an error in submit_target_depth_vel_mod")
-   
 
 
     # Waypoint modde
@@ -711,6 +768,24 @@ class WaypointGui:
         self.create_status_frame()
         self.create_on_off_frame()
         self.create_waypoint_mode_frame()
+
+           
+
+        if self.hold_pose:
+            self.hold_pose = False
+            rospy.loginfo("Continuing to waypoints")
+            self.pub7.publish(self.hold_pose)
+        
+        elif not self.hold_pose:
+            self.hold_pose = True
+            rospy.loginfo("Requested position hold")
+            self.pub7.publish(self.hold_pose)
+
+            pose_stamped_msg = PoseStamped()
+            pose_stamped_msg.header.frame_id = 'NED'
+            pose_stamped_msg.pose = self.current_pose.pose.pose
+    
+            self.pub8.publish(pose_stamped_msg)
     
 
     def deactivate_waypoint_mode(self):
@@ -748,6 +823,11 @@ class WaypointGui:
         self.deactivate_waypoint_mode_button = Button(self.waypoint_mode_frame, text=f"Deactivate waypoint mode", command= self.deactivate_waypoint_mode)
         self.deactivate_waypoint_mode_button.grid(row= row_index, column=0, padx=20, pady=10, sticky = "w" )
         row_index +=1
+
+        # Edit controller params button
+        self.open_controller_params_button = Button(self.waypoint_mode_frame, text=f"Edit controller gains", command= self.create_controller_params_window)
+        self.open_controller_params_button .grid(row= row_index, column=0, padx=20, pady=10, sticky = "w" )
+        row_index +=1
         
         # Add waypoints frame
         self.waypoints_frame = LabelFrame(self.waypoint_mode_frame, text="Add Waypoints")
@@ -757,11 +837,11 @@ class WaypointGui:
         # motion controller frame
         self.motion_controller_frame = LabelFrame(self.waypoint_mode_frame, text = "Motion Controller")
         self.motion_controller_frame.grid(row=row_index, column=0, pady=10, sticky="ew")
-
+        row_index +=1
       
         # generate waypoints frame
         self.generate_waypoints_frame = LabelFrame(self.waypoint_mode_frame, text = "Generate test patterns")
-        self.generate_waypoints_frame.grid(row=3, column=0, pady=10, sticky="ew")
+        self.generate_waypoints_frame.grid(row=row_index, column=0, pady=10, sticky="ew")
         
 
 
@@ -1023,6 +1103,7 @@ class WaypointGui:
             if self.current_mode == "velocity":
                 self.pub9.publish(self.gains)
                 rospy.loginfo("Setting velocity")
+                rospy.loginfo(f"vyaw setpoint gui = {self.vyaw}")
             else:
                 rospy.logwarn("velocity mode is not active")
                 
@@ -1069,7 +1150,7 @@ class WaypointGui:
             self.x_pwm = self.get_user_input(self.pwm_mode_dict["x_pwm"])
             self.y_pwm = self.get_user_input(self.pwm_mode_dict["y_pwm"])
             self.z_pwm = self.get_user_input(self.pwm_mode_dict["z_pwm"])
-            self.yaw_pwm  = self.get_user_input(self.pwm_mode_dict["z_pwm"])
+            self.yaw_pwm  = self.get_user_input(self.pwm_mode_dict["yaw_pwm"])
         
             # quick work around for the differing scale and for when z is left blank
             if self.z_pwm == 0.0:
@@ -1395,9 +1476,9 @@ class WaypointGui:
         """ Extract values from entries and publish them """
         try:
             x = self.get_user_input(f"x{suffix}_entry")
-            y = self.get_user_input(f"x{suffix}_entry")
-            z = self.get_user_input(f"x{suffix}_entry")
-            yaw = self.get_user_input(f"x{suffix}_entry")*(np.pi / 180)
+            y = self.get_user_input(f"y{suffix}_entry")
+            z = self.get_user_input(f"z{suffix}_entry")
+            yaw = self.get_user_input(f"yaw{suffix}_entry")*(np.pi / 180)
 
             
             #     float(getattr(self, f"x{suffix}_entry").get())
@@ -1504,9 +1585,9 @@ class WaypointGui:
             pitch =0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
             x = self.get_user_input(f"x{suffix}_entry")
-            y = self.get_user_input(f"x{suffix}_entry")
-            z = self.get_user_input(f"x{suffix}_entry")
-            yaw = self.get_user_input(f"x{suffix}_entry")*(np.pi / 180)
+            y = self.get_user_input(f"y{suffix}_entry")
+            z = self.get_user_input(f"z{suffix}_entry")
+            yaw = self.get_user_input(f"yaw{suffix}_entry")*(np.pi / 180)
 
             pose_msg = Pose()
             # formatting for rviz visualization
@@ -1694,6 +1775,7 @@ def main():
     
     while not rospy.is_shutdown():
         root.mainloop()
+    # root.destroy()
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@
     <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />
     <!-- <node name="map_sim" pkg="simulating_nodes" type="map_sim.py" output="screen" /> -->
     <node name="velocity_plot" pkg="blue_rov_motion_controller" type="setpoint_plotting.py" output="screen"/>
+    
 
 
      <!-- Static transform from mad to ned -->
