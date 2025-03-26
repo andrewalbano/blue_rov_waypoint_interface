@@ -124,7 +124,7 @@ class WaypointGui:
         self.desired_path = Path()
         self.desired_path.header.frame_id='NED'
 
-        self.desired_path.poses.append(self.init_pose)
+        # self.desired_path.poses.append(self.init_pose)
 
         self.start_waypoint_index = Int8()
         self.start_waypoint_index = 0
@@ -211,8 +211,7 @@ class WaypointGui:
         self.pub9 = rospy.Publisher("controller_gains", Float32MultiArray, queue_size=10)
         
         self.pub11 = rospy.Publisher("toggle_velocity_plot", Bool, queue_size=10)
-
-
+        self.pub12 = rospy.Publisher("add_waypoint", PoseStamped, queue_size=10)
 
 
 
@@ -1559,7 +1558,15 @@ class WaypointGui:
             pose_stamped_msg.pose = pose_msg
             self.goal_waypoints.poses.append(pose_msg)
 
+            self.pub12.publish(pose_stamped_msg)
+
             # testing the path message
+            if not self.desired_path.poses:
+                start_pose = PoseStamped()
+                start_pose.header.frame_id = self.current_pose.header.frame_id
+                start_pose.pose= self.current_pose.pose.pose
+                self.desired_path.poses.append(start_pose)
+    
             self.desired_path.poses.append(pose_stamped_msg)
             rospy.loginfo(f"Added waypoint to list:\n {pose_msg}")
 
@@ -1765,8 +1772,11 @@ class WaypointGui:
             pose_stamped_msg = PoseStamped()
             pose_stamped_msg.header.frame_id = 'NED'
             pose_stamped_msg.pose = self.current_pose.pose.pose
+        # else:
+            # rospy.loginfo_once("unexpected state from togle hold")
+            
     
-            self.pub8.publish(pose_stamped_msg)
+            # self.pub8.publish(pose_stamped_msg)
 
 def main():
     rospy.init_node('waypoint_gui')

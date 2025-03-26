@@ -4,7 +4,7 @@ import numpy as np
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped
 from tf.transformations import quaternion_from_euler,quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
 from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox
-
+from nav_msgs.msg import Path
 last_waypoint_transform = np.eye(4)
 print(last_waypoint_transform)
 
@@ -47,3 +47,12 @@ q = quaternion_from_euler(roll,pitch,yaw)
 roll,pitch,yaw = euler_from_quaternion(q) 
 
 print(yaw)
+
+
+
+desired_path = Path()
+desired_path.header.frame_id='NED'
+
+# desired_path.poses.append(self.init_pose)
+if not desired_path.poses:
+    print("empty")
