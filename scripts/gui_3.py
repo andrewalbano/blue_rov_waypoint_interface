@@ -9,9 +9,6 @@ from tkinter.ttk import *
 from std_msgs.msg import Bool,Int8,Float32MultiArray, String
 from nav_msgs.msg import Path
 
-# import tkinter as tk
-# from tkinter import ttk
-
 class windows(Tk):
     def __init__(self, *args, **kwargs):
         Tk.__init__(self, *args, **kwargs)
@@ -39,9 +36,9 @@ class windows(Tk):
 
         # Updates the text in the activate/deactivate button
         self.controller_active = False
-
+        self.open_controller_params_frame = False
         self.hold_pose = True
-
+        self.controller_params_window = None
         #  publishes various information to the motion controller
 
 
@@ -100,23 +97,23 @@ class windows(Tk):
         self.wm_title("BlueROV2 Heavy Configuration Interface")
 
         # creating a frame and assigning it to container
-        main_container = Frame(self)
-        main_container.grid(row=0,column=0,padx=10,pady=10, sticky="nsew")
+        self.main_container = Frame(self)
+        self.main_container.grid(row=0,column=0,padx=10,pady=10, sticky="nsew")
 
         # configuring the location of the container using grid
-        main_container.grid_rowconfigure(0, weight=1)
-        main_container.grid_columnconfigure(0, weight=1)
+        self.main_container.grid_rowconfigure(0, weight=1)
+        self.main_container.grid_columnconfigure(0, weight=1)
 
         # Status Frame
         #  prints the current mode of the controller
-        statusFrame = LabelFrame(main_container,text = "Status")
+        statusFrame = LabelFrame(self.main_container,text = "Status")
         statusFrame.grid(row=0, column=0, padx=0,pady=10, sticky="nsew")
 
         self.current_mode_label = Label(statusFrame, text="Current Mode: Disabled")
         self.current_mode_label.grid(row=1, column=0, padx=20, pady=20,sticky="w")
 
         # on off frame
-        on_off_frame = LabelFrame(main_container,text = "On / Off")
+        on_off_frame = LabelFrame(self.main_container,text = "On / Off")
         on_off_frame.grid(row=1, column=0, padx=10,pady=10, sticky="nsew")
 
         self.on_off_button = Button(
@@ -130,12 +127,16 @@ class windows(Tk):
         self.frames = {}
 
         # we'll create the frames themselves later but let's add the components to the dictionary.
+        # for F in (InfoPage,WaypointFrame,ControlOptionsPage,JoystickFrame,VelocityFrame,PWMFrame,ControllerParamFrame):
         for F in (InfoPage,WaypointFrame,ControlOptionsPage,JoystickFrame,VelocityFrame,PWMFrame):
-            frame = F(main_container, self)
+            frame = F(self.main_container, self)
 
             # the windows class acts as the root window for the frames.
+            # if not F == ControllerParamFrame:
             self.frames[F] = frame
-            frame.grid(row=3, column=0,padx=10,pady=10, sticky="nsew")
+
+            # if not F == ControllerParamFrame:
+            #     frame.grid(row=3, column=0,padx=10,pady=10, sticky="nsew")
 
 
 
@@ -146,17 +147,53 @@ class windows(Tk):
         # Updates the text in the activate/deactivate button
         self.controller_active = False
 
+        # self.controller_params_window = ControllerParamFrame(main_container,self)
+
         self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
         self.on_off_button.configure(text="Activate Controller")
         
         self.show_frame(InfoPage)
 
+        # self.controller_params_window = ControllerParamFrame(self.main_container,self)
 
+    def open_close_controller_params_window(self):
+        if not self.open_controller_params_frame:
 
+            try:
+                self.controller_params_window.destroy()
+                self.frames[WaypointFrame].open_controller_params_button.configure(text="Edit Controller Parameters")
+                self.frames[VelocityFrame].open_controller_params_button.configure(text="Edit Controller Parameters")
+
+        # controller.open_close_controller_params_window()
+            except:
+                rospy.logwarn("nothing to close")
+        elif self.open_controller_params_frame:
+            if self.controller_params_window:# if it exists try bringing it up 
+                try:
+                    self.controller_params_window.deiconify()
+                except:
+                    self.controller_params_window = ControllerParamFrame(self.main_container,self)
+            else:
+                self.controller_params_window = ControllerParamFrame(self.main_container,self)
+                
     def show_frame(self, cont):
+        # if cont == ControllerParamFrame:
+            # if self.open_controller_params_frame:
+
+            #     try:
+            #         self.open_controller_params_frame.deiconify()
+            #     except:
+            #         self.create_controller_params_window()
+            # elif not self.open_controller_params_frame:
+            #     self.open_controller_params_frame.destroy()
+
+        
+
+        # else:
         if cont == ControlOptionsPage:
             self.current_mode = "Initialized"
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
+            # self.frames[cont].open_controller_params_button.configure(text="Edit Controller Parameters")
         elif cont == JoystickFrame:
             self.current_mode = "Joystick"
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
@@ -165,21 +202,26 @@ class windows(Tk):
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
             # self.hold_pose = True
             self.frames[cont].hold_pose_button.configure(text="Follow Path")
-
-            self.erase_waypoints()
+            self.frames[cont].open_controller_params_button.configure(text="Edit Controller Parameters")
+            if self.goal_waypoints.poses:
+                self.erase_waypoints()
         elif cont == VelocityFrame:
             self.current_mode = "velocity"
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
+            self.frames[cont].open_controller_params_button.configure(text="Edit Controller Parameters")
+            
+            
+
         elif cont == PWMFrame:
             self.current_mode = "manual pwm"
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
             
 
         frame = self.frames[cont]
+        frame.grid(row=3, column=0,padx=10,pady=10, sticky="nsew")
         # raises the current frame to the top
         frame.tkraise()
         self.pub10.publish(self.current_mode)
-
 
     def position_callback(self, msg):
         self.current_pose = msg
@@ -201,6 +243,7 @@ class windows(Tk):
             self.on_off_button.configure(text="Disable Controller")
             self.controller_active = True
             self.show_frame(ControlOptionsPage)
+
             
         elif self.controller_active:
             self.current_mode = "Disabled"
@@ -208,7 +251,11 @@ class windows(Tk):
             self.on_off_button.configure(text="Activate Controller")
             self.controller_active = False
             self.show_frame(InfoPage)
-
+           
+            #  if it exists
+            if self.controller_params_window:
+                self.controller_params_window.destroy()
+            
     def set_zero_velocity(self):
         # try:
         # indicator tells the subscriber what information is being passed 
@@ -658,7 +705,83 @@ class windows(Tk):
             self.hold_pose = False
 
         self.pub7.publish(self.hold_pose)
-      
+   
+    def submit_controller_gains(self, indicator,kpx, kdx, kix,
+             kpy, kdy, kiy,
+             kpz, kdz, kiz,
+             kpyaw, kdyaw, kiyaw):
+    
+        try:
+            if indicator ==1:
+                rospy.loginfo("Sending controller gains for position controller")
+            elif indicator ==2:
+                rospy.loginfo("Sending controller gains for velcoity controller")
+                            
+            self.gains.data = [
+                    indicator,
+                    self.get_float(kpx),
+                    self.get_float(kdx),
+                    self.get_float(kix),
+                    self.get_float(kpy),
+                    self.get_float(kdy),
+                    self.get_float(kiy),
+                    self.get_float(kpz),
+                    self.get_float(kdz),
+                    self.get_float(kiz),
+                    self.get_float(kpyaw),
+                    self.get_float(kdyaw),
+                    self.get_float(kiyaw),
+                ]
+            self.pub9.publish(self.gains)
+
+        except ValueError as ve:
+            rospy.logerr(f"Invalid input for gains: {ve}")
+    
+    def submit_max_pwm(self, pwm):
+        try:
+            indicator = 4
+            rospy.loginfo("Setting max pwm signal")
+            max_pwm  = float(pwm)
+            self.gains.data = [
+                    indicator,
+                    max_pwm
+                    ]
+            self.pub9.publish(self.gains)
+        except: 
+            rospy.logerr("Encountered an error in submit_max_pwm")
+        
+    def submit_max_linear_velocity(self,velocity):
+        try:
+            indicator = 3
+            rospy.loginfo("Seting max linear velocity")
+            # max_linear_velocity  = float(velocity)
+            self.gains.data = [
+                    indicator,
+                    float(velocity)
+                    ]
+            self.pub9.publish(self.gains)
+        except:
+            rospy.logerr("Encountered an error in submit_max_linear_velocity")
+            
+    def submit_max_angular_velocity(self,velocity):
+        try:
+            indicator = 9
+            rospy.loginfo("Seting max angular velocity")
+            # self.max_angular_velocity  = float(velocity)
+            self.gains.data = [
+                    indicator,
+                    float(velocity)
+                    ]
+            self.pub9.publish(self.gains)
+        except:
+            rospy.logerr("Encountered an error in submit_max_angular_velocity")
+     
+    def get_float(self,var):
+        try:
+            var = float(var)
+        except:
+            var = 0.0
+        return var 
 
 class InfoPage(LabelFrame):
     def __init__(self, parent, controller):
@@ -669,6 +792,8 @@ class InfoPage(LabelFrame):
 class ControlOptionsPage(LabelFrame):
     def __init__(self, parent, controller):
         LabelFrame.__init__(self, parent,text="Control Modes")
+
+
         row_index = 0
         self.open_joystick_mode_button = Button(self, text="Activate Joystick Mode", command=lambda: controller.show_frame(JoystickFrame))
         self.open_joystick_mode_button.grid(row=row_index, column= 0,columnspan=1,padx=20, pady=10,sticky="ew")
@@ -686,9 +811,22 @@ class ControlOptionsPage(LabelFrame):
         self.open_pwm_mode_button.grid(row=row_index, column = 0, columnspan=1, padx=20, pady=10,sticky="ew")
         row_index+=1
 
-        # self.open_controller_params_button = Button(self, text="Open Controller Parameters", command=self.create_controller_params_window)
+        # self.open_controller_params_button = Button(self, text="Edit Controller Parameters", command=lambda: self.open_controller_params_button_function(controller))
         # self.open_controller_params_button.grid(row=row_index, column=0 ,padx=20, pady=10,sticky="ew")
-        # row_index+=1
+        # row_index+=1        
+
+    def open_controller_params_button_function(self,controller):
+        if not controller.open_controller_params_frame:
+            controller.open_controller_params_frame = True
+            text = "Close Controller Parameters"
+        elif controller.open_controller_params_frame:    
+            controller.open_controller_params_frame  = False
+            text = "Edit Controller Parameters"
+            
+
+        self.open_controller_params_button.configure(text=f"{text}")
+
+        controller.open_close_controller_params_window()
 
 class JoystickFrame(LabelFrame):
     def __init__(self, parent, controller):
@@ -708,13 +846,12 @@ class VelocityFrame(LabelFrame):
         self.close_velocity_mode_button.grid(row=row_index, column= 0, columnspan=1, padx=20, pady=10,sticky="ew")
         row_index+=1
 
-        # Edit controller params button
-        # self.open_controller_params_button = Button(self.velocity_setpoint_mode_frame, text=f"Edit controller gains", command= self.create_controller_params_window)
-        # self.open_controller_params_button .grid(row= row_index, column=0, padx=20, pady=10, sticky = "w" )
-        # row_index +=1
+        
+        self.open_controller_params_button = Button(self, text=f"Edit Controller Parameters", command=lambda: self.open_controller_params_button_function(controller))
+        self.open_controller_params_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=2)
+        row_index +=1
 
         
-
         # set zero velocity button
         self.set_velocity_to_zero_button = Button(self, text=f"Set velocity to zero", command=lambda: controller.set_zero_velocity())
         self.set_velocity_to_zero_button.grid(row= row_index, column=0, columnspan=1,  padx=20, pady=10, sticky = "ew" )
@@ -775,6 +912,19 @@ class VelocityFrame(LabelFrame):
 
         submit_velocity_button = Button(self.velocity_setpoint_frame, text=f"Submit", command=lambda: controller.submit_velocity_setpoint(vx.get(),vy.get(),vz.get(),vyaw.get()))
         submit_velocity_button.grid(row = row_index, column=1,padx=5, pady=5)   
+
+    def open_controller_params_button_function(self,controller):
+        if not controller.open_controller_params_frame:
+            controller.open_controller_params_frame = True
+            text = "Close Controller Parameters"
+        elif controller.open_controller_params_frame:    
+            controller.open_controller_params_frame  = False
+            text = "Edit Controller Parameters"
+            
+
+        self.open_controller_params_button.configure(text=f"{text}")
+
+        controller.open_close_controller_params_window()
 
 class PWMFrame(LabelFrame):
     def __init__(self, parent, controller):
@@ -859,7 +1009,8 @@ class WaypointFrame(LabelFrame):
 
         row_index =0
         self.close_waypoint_mode_button = Button(self, text="Disable Waypoint Mode", command=lambda: controller.show_frame(ControlOptionsPage))
-        self.close_waypoint_mode_button.grid(row=row_index, column= 0, columnspan =1,padx=20, pady=2,sticky="ew")
+        self.close_waypoint_mode_button.grid(row=row_index, column= 0, columnspan =1,padx=20, pady=5,sticky="ew")
+    
       
         # self.erase_waypoints_button = Button(self, text="Erase all waypoints", command=lambda: controller.erase_waypoints())
         # self.erase_waypoints_button.grid(row= row_index, column=1, columnspan=1, sticky="ew", padx=20, pady=2)
@@ -882,10 +1033,10 @@ class WaypointFrame(LabelFrame):
         
             
         # self.hold_pose_button = Button(self, text="Follow Path", command=lambda: self.hold_pose_button_function(controller))
-        self.hold_pose_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=2)
+        self.hold_pose_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=5)
       
-        # self.other_button = Button(self, text="Follow Path", command=lambda: controller.hold_pose_button_function())
-        # self.other_button.grid(row= row_index, column=1, columnspan=1, sticky="ew", padx=20, pady=2)
+        # self.open_controller_params_button = Button(self, text=f"Edit Controller Parameters", command=lambda: controller.open_controller_params_button_function(controller))
+        # self.open_controller_params_button.grid(row= row_index, column=1, columnspan=1, sticky="ew", padx=20, pady=2)
     
         # self.other_button = Button(self, text="Follow Path", command=lambda: controller.hold_pose_button_function())
         # self.other_button.grid(row= row_index, column=2, columnspan=1, sticky="ew", padx=20, pady=2)
@@ -896,7 +1047,13 @@ class WaypointFrame(LabelFrame):
         row_index+=1
          
         self.erase_waypoints_button = Button(self, text="Erase all waypoints", command=lambda: self.erase_waypoints(controller))
-        self.erase_waypoints_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=2)
+        self.erase_waypoints_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=5)
+
+        row_index+=1
+        self.open_controller_params_button = Button(self, text=f"Edit Controller Parameters", command=lambda: self.open_controller_params_button_function(controller))
+        self.open_controller_params_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=5)
+    
+      
         
         # self.other_button = Button(self, text="Follow Path", command=lambda: controller.hold_pose_button_function())
         # self.other_button.grid(row= row_index, column=1, columnspan=1, sticky="ew", padx=20, pady=2)
@@ -905,14 +1062,6 @@ class WaypointFrame(LabelFrame):
         # self.other_button.grid(row= row_index, column=2, columnspan=1, sticky="ew", padx=20, pady=2)
 
       
-
-    
-
-        # Edit controller params button
-        # self.open_controller_params_button = Button(self.velocity_setpoint_mode_frame, text=f"Edit controller gains", command= self.create_controller_params_window)
-        # self.open_controller_params_button .grid(row= row_index, column=0, padx=20, pady=10, sticky = "w" )
-        # row_index +=1
-
 
         row_index+=1
 
@@ -1037,6 +1186,7 @@ class WaypointFrame(LabelFrame):
         visualize_waypoint_button_3 .grid(row = row_index, column=0,padx=5, pady=5)  
         submit_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Submit", command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get()))
         submit_waypoint_button_3 .grid(row = row_index, column=1,padx=5, pady=5)   
+
         '''
         row_index = 0
         # waypoint relative to GPS
@@ -1088,9 +1238,258 @@ class WaypointFrame(LabelFrame):
             
                 self.hold_pose_button.configure(text="Follow Path")
                 controller.hold_pose_button_function()
-          
+
+    def open_controller_params_button_function(self,controller):
+        if not controller.open_controller_params_frame:
+            controller.open_controller_params_frame = True
+            text = "Close Controller Parameters"
+        elif controller.open_controller_params_frame:    
+            controller.open_controller_params_frame  = False
+            text = "Edit Controller Parameters"
+            
+
+        self.open_controller_params_button.configure(text=f"{text}")
+
+        controller.open_close_controller_params_window()
+
+class ControllerParamFrame(Toplevel):
+    def __init__(self, parent, controller):
+        # LabelFrame.__init__(self, parent, text = "Controller Parameters")
+        # controller_params_window = Toplevel(self.master)
+        # super.__init__(self,parent,text = "Controller Parameters")
+        super().__init__(master = parent)
+        self.title("Controller Parameters")
+        # Add a label widget
+        row_index = 0
+        # Button to return to the main window
+        self.controller_params_window_back_button = Button(self, text="Close Window", command=lambda: self.close(controller))
+        self.controller_params_window_back_button.grid(row = row_index, column=0, columnspan=2, sticky="ew", padx=20, pady=20)
+
+        row_index +=1
+
+        # Position Controller Parameters
+        self.position_controller_params = LabelFrame(self, text="Position Controller Gains")
+        self.position_controller_params.grid(row =row_index, column=0, columnspan=1, padx =20, pady=20, sticky="ew")
+        # row_index+=1
+        # Position Controller Parameters
+        self.velocity_controller_params  = LabelFrame(self, text="Velocity Controller Gains")
+        self.velocity_controller_params.grid(row =row_index, column=1, columnspan=1, padx =20, pady=20, sticky="ew")
+        row_index +=1
+
+        # Saturation Parameters
+        self.saturation_params = LabelFrame(self, text="Saturation Parameters")
+        self.saturation_params.grid(row = row_index, column=0, columnspan=2, padx = 20, pady=20, sticky="ew")
        
-if __name__ == "__main__":
+        row_index +=1
+        
+    
+
+        # creating velocity setpoint labels in velocity setpoint frame
+        row_index = 0
+
+        label = Label(self.position_controller_params , text=f"kp")
+        label.grid(row=row_index, column=1,columnspan=1, padx=5, pady=5)
+        label = Label(self.position_controller_params , text=f"kd")
+        label.grid(row=row_index, column=2,columnspan=1, padx=5, pady=5)
+        label = Label(self.position_controller_params , text=f"ki")
+        label.grid(row=row_index, column=3,columnspan=1, padx=5, pady=5)
+        row_index += 1
+
+
+
+        # X ENTRY
+        label = Label(self.position_controller_params , text=f"x")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpx1 = StringVar()
+        kpx1_entry = Entry(self.position_controller_params ,textvariable = kpx1, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdx1 = StringVar()
+        kdx1_entry = Entry(self.position_controller_params ,textvariable = kdx1, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kix1 = StringVar()
+        kix1_entry = Entry(self.position_controller_params ,textvariable = kix1, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+
+
+        # Y ENTRY
+        label = Label(self.position_controller_params , text=f"y")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpy1 = StringVar()
+        kpy1_entry = Entry(self.position_controller_params ,textvariable = kpy1, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdy1 = StringVar()
+        kdy1_entry = Entry(self.position_controller_params ,textvariable = kdy1, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kiy1 = StringVar()
+        kiy1_entry = Entry(self.position_controller_params ,textvariable = kiy1, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+        # Z ENTRY
+        label = Label(self.position_controller_params , text=f"z")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpz1 = StringVar()
+        kpyz_entry = Entry(self.position_controller_params ,textvariable = kpz1, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdz1 = StringVar()
+        kdz1_entry = Entry(self.position_controller_params ,textvariable = kdz1, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kiz1 = StringVar()
+        kiz1_entry = Entry(self.position_controller_params ,textvariable = kiz1, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+        # YAW ENTRY
+        label = Label(self.position_controller_params , text=f"yaw")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpyaw1 = StringVar()
+        kpyaw1_entry = Entry(self.position_controller_params ,textvariable = kpyaw1, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdyaw1 = StringVar()
+        kdyaw1_entry = Entry(self.position_controller_params ,textvariable = kdyaw1, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kiyaw1 = StringVar()
+        kiyaw1_entry = Entry(self.position_controller_params ,textvariable = kiyaw1, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+        # Button to return to the main window
+        self.submit_position_gains_button = Button(self.position_controller_params, text="Submit", command=lambda: controller.submit_controller_gains(1,kpx1.get(), kdx1.get(), kix1.get(),
+             kpy1.get(), kdy1.get(), kiy1.get(),
+             kpz1.get(), kdz1.get(), kiz1.get(),
+             kpyaw1.get(), kdyaw1.get(), kiyaw1.get()))
+        self.submit_position_gains_button.grid(row = row_index, column=1,columnspan=3, sticky="ew", padx=5, pady=10)
+        
+        row_index+=1
+
+        
+
+        # creating velocity setpoint labels in velocity setpoint frame
+        row_index = 0
+
+        label = Label(self.velocity_controller_params  , text=f"kp")
+        label.grid(row=row_index, column=1,columnspan=1, padx=5, pady=5)
+        label = Label(self.velocity_controller_params  , text=f"kd")
+        label.grid(row=row_index, column=2,columnspan=1, padx=5, pady=5)
+        label = Label(self.velocity_controller_params  , text=f"ki")
+        label.grid(row=row_index, column=3,columnspan=1, padx=5, pady=5)
+        row_index += 1
+
+
+
+        # X ENTRY
+        label = Label(self.velocity_controller_params  , text=f"x")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpx2 = StringVar()
+        kpx2_entry = Entry(self.velocity_controller_params  ,textvariable = kpx2, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdx2 = StringVar()
+        kdx2_entry = Entry(self.velocity_controller_params  ,textvariable = kdx2, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kix2 = StringVar()
+        kix2_entry = Entry(self.velocity_controller_params  ,textvariable = kix2, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+
+
+        # Y ENTRY
+        label = Label(self.velocity_controller_params  , text=f"y")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpy2 = StringVar()
+        kpy2_entry = Entry(self.velocity_controller_params  ,textvariable = kpy2, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdy2 = StringVar()
+        kdy2_entry = Entry(self.velocity_controller_params  ,textvariable = kdy2, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kiy2 = StringVar()
+        kiy2_entry = Entry(self.velocity_controller_params  ,textvariable = kiy2, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+        # Z ENTRY
+        label = Label(self.velocity_controller_params  , text=f"z")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpz2 = StringVar()
+        kpyz_entry = Entry(self.velocity_controller_params  ,textvariable = kpz2, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdz2 = StringVar()
+        kdz2_entry = Entry(self.velocity_controller_params  ,textvariable = kdz2, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kiz2 = StringVar()
+        kiz2_entry = Entry(self.velocity_controller_params  ,textvariable = kiz2, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+        # YAW ENTRY
+        label = Label(self.velocity_controller_params  , text=f"yaw")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+
+        kpyaw2 = StringVar()
+        kpyaw2_entry = Entry(self.velocity_controller_params  ,textvariable = kpyaw2, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+    
+        kdyaw2 = StringVar()
+        kdyaw2_entry = Entry(self.velocity_controller_params  ,textvariable = kdyaw2, width=10).grid(row=row_index, column=2,padx=5, pady=5, sticky="ew")
+        
+        kiyaw2 = StringVar()
+        kiyaw2_entry = Entry(self.velocity_controller_params  ,textvariable = kiyaw2, width=10).grid(row=row_index, column=3,padx=5, pady=5, sticky="ew")
+        
+        row_index +=1
+
+        # Button to return to the main window
+        self.submit_position_gains_button = Button(self.velocity_controller_params , text="Submit", command=lambda: controller.submit_controller_gains(2, kpx2.get(), kdx2.get(), kix2.get(),
+             kpy2.get(), kdy2.get(), kiy2.get(),
+             kpz2.get(), kdz2.get(), kiz2.get(),
+             kpyaw2.get(), kdyaw2.get(), kiyaw2.get()))
+        self.submit_position_gains_button.grid(row = row_index, column=1,columnspan=3, sticky="ew", padx=5, pady=10)
+    
+
+        #  saturation parameters
+        row_index = 0
+
+        # max lin velocity 
+        label = Label(self.saturation_params, text=f"max linear velocity (m/s)")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+        max_lin_velocity = StringVar()
+        max_lin_velocity_entry = Entry(self.saturation_params, textvariable = max_lin_velocity, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        self.submit_linear_velocity_button = Button(self.saturation_params, text=f"Submit", command=lambda: controller.submit_max_linear_velocity(max_lin_velocity.get()))
+        self.submit_linear_velocity_button.grid(row= row_index, column=2,  padx=5, pady=10)
+        row_index +=1
+
+        label = Label(self.saturation_params, text=f"max angular velocity (deg/s)")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+        max_ang_velocity = StringVar()
+        max_ang_velocity_entry = Entry(self.saturation_params, textvariable = max_ang_velocity, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        self.submit_angular_velocity_button = Button(self.saturation_params, text=f"Submit", command=lambda: controller.submit_max_angular_velocity(max_ang_velocity.get()))
+        self.submit_angular_velocity_button.grid(row= row_index, column=2, padx=5, pady=10)
+        row_index +=1       
+
+        label = Label(self.saturation_params, text=f"max x, y, yaw pwm (0 - 1000)")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+        max_pwm= StringVar()
+        max_pwm_entry = Entry(self.saturation_params, textvariable = max_pwm, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        self.submit_x_y_pwm_button = Button(self.saturation_params, text=f"Submit", command=lambda: controller.submit_max_pwm(max_pwm.get()))
+        self.submit_x_y_pwm_button.grid(row= row_index, column=2, padx=5, pady=10)
+        row_index +=1       
+  
+
+
+    def close(self,controller):
+        controller.open_controller_params_frame = False
+        controller.open_close_controller_params_window()
+
+
+
+if __name__ == '__main__':
 
     rospy.init_node('waypoint_gui')
     interface = windows()
