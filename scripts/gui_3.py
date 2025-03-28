@@ -286,10 +286,10 @@ class windows(Tk):
         indicator = 5
 
         # # setting velocity to zero
-        self.vx_setpoint = float(vx)
-        self.vy_setpoint = float(vy)
-        self.vz_setpoint = float(vz)
-        self.vyaw_setpoint = float(vyaw)
+        self.vx_setpoint = self.get_float(vx)
+        self.vy_setpoint = self.get_float(vy)
+        self.vz_setpoint = self.get_float(vz)
+        self.vyaw_setpoint = self.get_float(vyaw)
         
         # preparing information to be passed
         self.gains.data = [
@@ -313,7 +313,7 @@ class windows(Tk):
         # preparing information to be passed
         self.gains.data = [
                 indicator,
-                float(val)
+                self.get_float(val)
             ]
         
         # publishing information
@@ -347,10 +347,10 @@ class windows(Tk):
         indicator = 7
 
         # setting PWM to zero
-        self.x_pwm = float(x_pwm)
-        self.y_pwm = float(y_pwm)
-        self.z_pwm = float(z_pwm)
-        self.yaw_pwm  = float(yaw_pwm)
+        self.x_pwm = self.get_float(x_pwm)
+        self.y_pwm = self.get_float(y_pwm)
+        self.z_pwm = self.get_float(z_pwm)
+        self.yaw_pwm  = self.get_float(yaw_pwm)
     
         # quick work around for the differing scale and for when z is left blank
         if self.z_pwm == 0.0:
@@ -376,10 +376,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            yaw = float(yaw)*np.pi / 180
+            x = self.get_float(x)
+            y = self.get_float(y)
+            z = self.get_float(z)
+            yaw = self.get_float(yaw)*np.pi / 180
 
             pose_msg = Pose()
             # formatting for rviz visualization
@@ -430,10 +430,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            yaw = float(yaw)*np.pi / 180
+            x = self.get_float(x)
+            y = self.get_float(y)
+            z = self.get_float(z)
+            yaw = self.get_float(yaw)*np.pi / 180
 
             pose_msg = Pose()
             # formatting for rviz visualization
@@ -475,10 +475,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            yaw = float(yaw)*np.pi / 180
+            x = self.get_float(x)
+            y = self.get_float(y)
+            z = self.get_float(z)
+            yaw = self.get_float(yaw)*np.pi / 180
 
             pose_msg = Pose()
             # formatting for rviz visualization
@@ -509,10 +509,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            yaw = float(yaw)*np.pi / 180
+            x = self.get_float(x)
+            y = self.get_float(y)
+            z = self.get_float(z)
+            yaw = self.get_float(yaw)*np.pi / 180
 
 
             # formatting for rviz visualization
@@ -560,10 +560,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            yaw = float(yaw)*np.pi / 180
+            x = self.get_float(x)
+            y = self.get_float(y)
+            z = self.get_float(z)
+            yaw = self.get_float(yaw)*np.pi / 180
 
 
             # formatting for rviz visualization
@@ -625,10 +625,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = float(x)
-            y = float(y)
-            z = float(z)
-            yaw = float(yaw)*np.pi / 180
+            x = self.get_float(x)
+            y = self.get_float(y)
+            z = self.get_float(z)
+            yaw = self.get_float(yaw)*np.pi / 180
 
 
             # formatting for rviz visualization
@@ -983,11 +983,11 @@ class PWMFrame(LabelFrame):
         y_pwm_label = Label(self.pwm_setpoint_frame, text=f"y pwm (-1000, 1000)")
         y_pwm_label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5, sticky="ew")
         y_pwm = StringVar()
-        y_pwm = Entry(self.pwm_setpoint_frame,textvariable = y_pwm, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        y_pwm_entry = Entry(self.pwm_setpoint_frame,textvariable = y_pwm, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
         row_index +=1
 
         
-        z_pwm_label = Label(self.pwm_setpoint_frame, text=f"z pwm (0, 500)")
+        z_pwm_label = Label(self.pwm_setpoint_frame, text=f"z pwm (0, 1000)")
         z_pwm_label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5, sticky="ew")
         z_pwm = StringVar()
         z_pwm_entry = Entry(self.pwm_setpoint_frame,textvariable = z_pwm, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
