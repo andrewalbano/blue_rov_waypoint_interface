@@ -2,7 +2,7 @@
 import rospy
 import numpy as np
 from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped,PoseStamped
-from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
+from tf.transformations import quaternion_from_euler, quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion, euler_from_matrix
 # from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox, Frame, Toplevel
 import tkinter as tk
 from tkinter import *
@@ -19,12 +19,13 @@ class windows(Tk):
         self.pub4 = rospy.Publisher("target_waypoints_list", PoseArray, queue_size=10) # hot used yet
         self.pub10 = rospy.Publisher("motion_controller_state",String, queue_size=1)
         self.pub5 = rospy.Publisher("desired_robot_path", Path, queue_size=10)
-        self.pub7 = rospy.Publisher("hold_pose", Bool, queue_size=10)
+        self.pub7 = rospy.Publisher("hold_pose", Bool, queue_size=1)
         self.pub9 = rospy.Publisher("controller_gains", Float32MultiArray, queue_size=10)
         self.pub10 = rospy.Publisher("motion_controller_state",String, queue_size=1)
         self.pub12 = rospy.Publisher("add_waypoint", PoseStamped, queue_size=10)
         self.pub13 = rospy.Publisher("reset_waypoints", Bool, queue_size=10)
         self.pub14 = rospy.Publisher("path_generation_type", Int8MultiArray, queue_size=10)
+        self.pub15 = rospy.Publisher("path_orientation_style", Int8MultiArray, queue_size=10)
         
         
         # Setting window icon
@@ -37,8 +38,10 @@ class windows(Tk):
         # Updates the text in the activate/deactivate button
         self.controller_active = False
         self.open_controller_params_frame = False
+        self.open_preset_patterns_frame = False
         self.hold_pose = True
         self.controller_params_window = None
+        self.preset_patterns_window = None
 
         self.target_depth = None
 
@@ -95,6 +98,11 @@ class windows(Tk):
         self.init_pose = PoseStamped()
         self.init_pose.header.frame_id = self.current_pose.header.frame_id
         self.init_pose.pose= self.current_pose.pose.pose
+
+
+        # orientation style along path
+        self.orientation_style = Int8MultiArray()
+        self.orientation_style.data = []
 
 
     
@@ -182,17 +190,32 @@ class windows(Tk):
         # Updates the text in the activate/deactivate button
         self.controller_active = False
 
-        # self.controller_params_window = ControllerParamFrame(main_container,self)
-
         self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
         self.on_off_button.configure(text="Activate Controller")
         
         self.show_frame(InfoPage)
 
-        # self.controller_params_window = ControllerParamFrame(self.main_container,self)
-
-
         self.sub1 = rospy.Subscriber('/state', PoseWithCovarianceStamped, self.position_callback)
+        self.sub2 = rospy.Subscriber('/holdpoe', PoseWithCovarianceStamped, self.position_callback)
+
+    def open_close_preset_patterns_window(self):
+        if not self.open_preset_patterns_frame:
+
+            try:
+                self.preset_patterns_window.destroy()
+                self.frames[WaypointFrame].open_preset_patterns_button.configure(text="Open Preset Patterns")
+                
+            except:
+                rospy.logwarn("nothing to close")
+
+        elif self.open_preset_patterns_frame:
+            if self.preset_patterns_window:# if it exists try bringing it up 
+                try:
+                    self.preset_patterns_window.deiconify()
+                except:
+                    self.preset_patterns_window = PresetPatternsFrame(self.main_container,self)
+            else:
+                self.preset_patterns_window = PresetPatternsFrame(self.main_container,self)
 
     def open_close_controller_params_window(self):
         if not self.open_controller_params_frame:
@@ -233,6 +256,7 @@ class windows(Tk):
             # self.hold_pose = True
             self.frames[cont].hold_pose_button.configure(text="Follow Path")
             self.frames[cont].open_controller_params_button.configure(text="Edit Controller Parameters")
+            self.frames[cont].open_preset_patterns_button.configure(text="Open Preset Patterns")
 
             self.target_depth_button.config(state=DISABLED)
             self.target_depth = None
@@ -275,7 +299,6 @@ class windows(Tk):
         # if self.current_mode =="Disabled" | (self.current_mode =="Initialized" and self.target_depth == None):
         #     self.target_depth_label.configure(text=f"Target Depth: {round(self.current_pose.pose.pose.position.z,2)} m")
         
-  
     def get_current_pose_transform(self):
         # convert current pose to transformation matrix relative in NED frame
         trans_matrix = translation_matrix([self.current_pose.pose.pose.position.x,self.current_pose.pose.pose.position.y,self.current_pose.pose.pose.position.z])
@@ -342,10 +365,10 @@ class windows(Tk):
         indicator = 5
 
         # # setting velocity to zero
-        self.vx_setpoint = self.get_float(vx)
-        self.vy_setpoint = self.get_float(vy)
-        self.vz_setpoint = self.get_float(vz)
-        self.vyaw_setpoint = self.get_float(vyaw)
+        self.vx_setpoint = round(self.get_float(vx),3)
+        self.vy_setpoint = round(self.get_float(vy),3)
+        self.vz_setpoint = round(self.get_float(vz),3)
+        self.vyaw_setpoint = round(self.get_float(vyaw),3)
         
         # preparing information to be passed
         self.gains.data = [
@@ -422,7 +445,7 @@ class windows(Tk):
         else:
             self.target_depth_label.configure(text=f"Target Depth: Manually adjusting depth")
 
-            
+    
         
         # preparing information to be passed
         self.gains.data = [
@@ -872,7 +895,7 @@ class windows(Tk):
         self.pub14.publish(self.path_generation_data)
         rospy.loginfo("Requesting path visualization")
             
-    def generate_square(self, relative_indicator, size):
+    def generate_square(self, relative_indicator, size, rotate_direction):
         size = self.get_float(size)
         if size == 0: 
             rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
@@ -884,19 +907,28 @@ class windows(Tk):
         elif relative_indicator =="2":
             self.submit_waypoint_2(0,0,0,0)
         elif relative_indicator =="":
-            rospy.logwarn("start point not selected defaulting to last waypoint added")
-            self.submit_waypoint_2(0,0,0,0)
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0)
 
-        
-        self.submit_waypoint_2(size,0,0,90)
-        self.submit_waypoint_2(size,0,0,90)
-        self.submit_waypoint_2(size,0,0,90)
-        self.submit_waypoint_2(size,0,0,90)
+        if rotate_direction == "1":
+            rotate = 90
+        elif rotate_direction == "2":
+            rotate = -90
+        elif relative_indicator =="":
+            rospy.logwarn("rotation direction not selected, defaulting to cw")
+            rotate = 90 
 
 
+        self.submit_waypoint_2(size,0,0,rotate)
+        self.submit_waypoint_2(size,0,0,rotate)
+        self.submit_waypoint_2(size,0,0,rotate)
+        self.submit_waypoint_2(size,0,0,rotate)
     
-    def generate_circle(self, relative_indicator, radius):
+    def generate_circle(self, relative_indicator, radius, rotation_angle, rotation_direction):
         radius = self.get_float(radius)
+        rotation_angle= self.get_float(rotation_angle)*np.pi/180
+
         if radius == 0: 
             rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
             radius = 1 
@@ -909,101 +941,259 @@ class windows(Tk):
             self.submit_waypoint_2(0,0,0,0)
 
         elif relative_indicator =="":
-            rospy.logwarn("start point not selected defaulting to last waypoint added")
-            self.submit_waypoint_2(0,0,0,0)
+            rospy.logwarn("start point not selected defaulting to current pose")
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0)
         
+        if rotation_direction =="1":
+            direction_sign = 1
+
+        elif rotation_direction == "2":
+            direction_sign = -1
+            
+        elif rotation_direction == "":
+               rospy.logwarn("Rotation direction was not specified, defaulting to cw")
+               direction_sign = 1
+
+
+
+        # determine how many points you want on the circle
+        interval = 20*np.pi/180
+        
+        if rotation_angle == 0:
+            rospy.logwarn("Cannot create circle of angle 0, defaulting to 360 degrees ")
+            rotation_angle = 360 *np.pi/180
+            
+        elif rotation_angle < interval:
+            interval = rotation_angle
+
+        
+        num_points = int(rotation_angle/interval)+1
+
+
         # find center of circle 
         trans_matrix = translation_matrix([radius,0,0])
         transform = concatenate_matrices(self.last_waypoint_transform, trans_matrix)
+
+        # get starting angle
         x,y,z = translation_from_matrix(transform) 
-        
+        roll,pitch,yaw = euler_from_matrix(transform)
+
+        # normalize starting angle
+        start_angle = yaw + np.pi
+        if start_angle > np.pi:
+            start_angle -= 2 * np.pi
+        elif start_angle < -np.pi:
+            start_angle += 2 * np.pi
+
     
-        # generate vector from center to current location
 
-        vector = [-1*x,-1*y]
-        start_angle = np.arctan2(vector[1], vector[0])
+        #avoid re-adding the first waypoint
+        i = 1 
+        while i < num_points:    
 
+            # get angle and normailize it
+            angle = start_angle+(i * interval * direction_sign)
+            if angle > np.pi:
+                angle -= 2 * np.pi
+            elif angle < -np.pi:
+                angle += 2 * np.pi
         
-        
-        # determine how many points you want on the circle
-        interval = 20*np.pi/180
-        num_points = int(2*np.pi/interval+1)
+            new_x = x + (radius*np.cos(angle))
+            new_y = y + (radius*np.sin(angle))
 
 
-        # center location and orientation
-        # self.submit_waypoint_3(x,y,z,start_angle)
+            # get yaw of new point
+            yaw = angle + np.pi
+            if yaw > np.pi:
+                yaw -= 2 * np.pi
+            elif yaw < -np.pi:
+                yaw += 2 * np.pi
 
-
-
-        i = 0
-        # rospy.loginfo(f"start angle {start_angle*180/np.pi}")
-        while i < num_points:          
-
-            new_x = x + (radius*np.cos(start_angle+(i*interval)))
-            new_y = y + (radius*np.sin(start_angle+(i*interval)))
-            
-            
-
-            vector = [x - new_x, y - new_y]
-            yaw = np.arctan2(vector[1], vector[0])*180/np.pi
-            rospy.loginfo(yaw)
+            # convert to degrees
+            yaw = yaw *180/np.pi
 
             self.submit_waypoint_3(new_x, new_y, z, yaw)
             i+=1
+        
+        # add the last waypoint at exact desired location
+        angle = start_angle+(rotation_angle * direction_sign)
+        if angle > np.pi:
+            angle -= 2 * np.pi
+        elif angle < -np.pi:
+            angle += 2 * np.pi
+      
+        
+        new_x = x + (radius*np.cos(angle))
+        new_y = y + (radius*np.sin(angle))
+        
+        # get yaw of last point in degrees
+        yaw = (angle+np.pi)*180/np.pi
+
+        self.submit_waypoint_3(new_x, new_y, z, yaw)     
+    
+    
+    def generate_arc(self, relative_indicator, radius, rotation_angle, rotation_direction):
+        radius = self.get_float(radius)
+        rotation_angle= self.get_float(rotation_angle)*np.pi/180
+
+        if radius == 0: 
+            rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
+            radius = 1 
+
+        if relative_indicator == "1":
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0)
+
+        elif relative_indicator =="2":
+            self.submit_waypoint_2(0,0,0,0)
+
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected defaulting to current pose")
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0)
+        
+
+        #  get last waypoint transform
+        roll, pitch , yaw = euler_from_matrix(self.last_waypoint_transform)
+
+        if rotation_direction =="1":
+            direction_sign = 1
+            start_angle = yaw -np.pi/2
+
+        elif rotation_direction == "2":
+            direction_sign = -1
+            start_angle = yaw + np.pi/2
             
+        elif rotation_direction == "":
+            rospy.logwarn("Rotation direction was not specified, defaulting to cw")
+            direction_sign = 1
+            start_angle = yaw - np.pi/2
+      
+        # normalize starting angle
+        if start_angle > np.pi:
+            start_angle -= 2 * np.pi
+        elif start_angle < -np.pi:
+            start_angle += 2 * np.pi
 
+
+
+        # determine how many points you want on the circle
+        interval = 15 * np.pi/180
         
-
-
-
-
-        # rospy.loginfo_once(f"start_angle {start_angle}")
-
-        # # self.submit_waypoint_2(radius,0,0,0)
-
-
-
-        # self.submit_waypoint_3(x+(radius*np.cos(start_angle)), y+ radius*np.sin(start_angle),z,0)
-
-        # self.submit_waypoint_3(x+(radius*np.cos(start_angle+(np.pi/2))), y+ radius*np.sin(start_angle+(np.pi/2)),z,0)
-        # self.submit_waypoint_3(x+(radius*np.cos(start_angle+(np.pi))), y+ radius*np.sin(start_angle+(np.pi)),z,0)
-        # self.submit_waypoint_3(x+(radius*np.cos(start_angle+(3*np.pi/2))), y+ radius*np.sin(start_angle+(3*np.pi/2)),z,0)
-        # # self.submit_waypoint_3(x+(radius*np.cos(start_angle+(np.pi/2))), y+ radius*np.sin(start_angle+(np.pi/2)),z,0)
-
-        
-
-
-
-
-
-
-
-        
-
-
-
-
-
-        
-
+        if rotation_angle == 0:
+            rospy.logwarn("Cannot create circle of angle 0, defaulting to 90 degrees ")
+            rotation_angle = 90 *np.pi/180
             
-        
-        # self.submit_waypoint_2(radius,0,0,90)
-        # self.submit_waypoint_2(radius,0,0,90)
-        # self.submit_waypoint_2(radius,0,0,90)
-        # self.submit_waypoint_2(size,0,0,90)
-
-
+        elif rotation_angle < interval:
+            interval = rotation_angle
 
         
+        num_points = int(rotation_angle/interval)+1
 
+        # find center of circle 
+        trans_matrix = translation_matrix([0,radius*direction_sign,0])
+        transform = concatenate_matrices(self.last_waypoint_transform, trans_matrix)
+        x, y, z = translation_from_matrix(transform) 
+        
+        # debugging center point
+        # self.submit_waypoint_3(x, y, z, start_angle*180/np.pi)   
     
 
+        #avoid re-adding the first waypoint
+        i = 1 
+        while i < num_points:    
+
+            # get angle and normailize it
+            angle = start_angle+(i * interval * direction_sign)
+            if angle > np.pi:
+                angle -= 2 * np.pi
+            elif angle < -np.pi:
+                angle += 2 * np.pi
+        
+            # get new coordinates
+            new_x = x + (radius*np.cos(angle))
+            new_y = y + (radius*np.sin(angle))
 
 
+            # get yaw of new point
+            if direction_sign == 1:
+                yaw = angle + np.pi/2
+            elif direction_sign == -1:
+                yaw = angle - np.pi/2
 
 
+            if yaw > np.pi:
+                yaw -= 2 * np.pi
+            elif yaw < -np.pi:
+                yaw += 2 * np.pi
 
+            # convert to degrees
+            yaw = yaw *180/np.pi
+    
+            self.submit_waypoint_3(new_x, new_y, z, yaw)
+            i+=1
+        
+        # add the last waypoint at exact desired location
+        angle = start_angle+(rotation_angle * direction_sign)
+        if angle > np.pi:
+            angle -= 2 * np.pi
+        elif angle < -np.pi:
+            angle += 2 * np.pi
+      
+        
+        new_x = x + (radius*np.cos(angle))
+        new_y = y + (radius*np.sin(angle))
+        
+        # get yaw of last point in degrees
+        yaw = (angle+np.pi/2)*180/np.pi
+
+        # self.submit_waypoint_3(new_x, new_y, z, yaw)     
+    
+    
+    def generate_lawnmower(self, relative_indicator, leg_length, leg_spacing, n_legs, rotate_direction):
+        leg_length = self.get_float(leg_length)
+        leg_spacing = self.get_float(leg_spacing)
+        n_legs = self.get_float(n_legs)    
+
+        if leg_length == 0: 
+            rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
+            size = 1 
+
+        if relative_indicator == "1":
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0)
+        elif relative_indicator =="2":
+            self.submit_waypoint_2(0,0,0,0)
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0)
+
+        if rotate_direction == "1":
+            rotate = 90
+        elif rotate_direction == "2":
+            rotate = -90
+        elif rotate_direction =="":
+            rospy.logwarn("rotation direction not selected, defaulting to cw")
+            rotate = 90 
+
+        i = 1
+
+        self.submit_waypoint_2(leg_length,0,0,rotate)
+        while i < n_legs:
+            self.submit_waypoint_2(leg_spacing,0,0,rotate)
+            if i == n_legs-1:
+                rotate = 0
+            else:
+                rotate *=-1
+            self.submit_waypoint_2(leg_length,0,0,rotate)
+            i +=1
+
+        # self.submit_waypoint_2(size,0,0,rotate)
+        # self.submit_waypoint_2(size,0,0,rotate)
+   
+# frames in main window
 class InfoPage(LabelFrame):
     def __init__(self, parent, controller):
         LabelFrame.__init__(self, parent,text="Information")
@@ -1032,9 +1222,6 @@ class ControlOptionsPage(LabelFrame):
         self.open_pwm_mode_button.grid(row=row_index, column = 0, columnspan=1, padx=20, pady=10,sticky="ew")
         row_index+=1
 
-        # self.open_controller_params_button = Button(self, text="Edit Controller Parameters", command=lambda: self.open_controller_params_button_function(controller))
-        # self.open_controller_params_button.grid(row=row_index, column=0 ,padx=20, pady=10,sticky="ew")
-        # row_index+=1        
 
     def open_controller_params_button_function(self,controller):
         if not controller.open_controller_params_frame:
@@ -1125,7 +1312,7 @@ class VelocityFrame(LabelFrame):
         vz_entry = Entry(self.velocity_setpoint_frame,textvariable = vz, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
         row_index +=1
 
-        vyaw_label = Label(self.velocity_setpoint_frame, text=f"yaw velocity (m/s)")
+        vyaw_label = Label(self.velocity_setpoint_frame, text=f"yaw velocity (deg/s)")
         vyaw_label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5, sticky="ew")
         vyaw = StringVar()
         vyaw_entry = Entry(self.velocity_setpoint_frame,textvariable = vyaw, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
@@ -1236,32 +1423,17 @@ class WaypointFrame(LabelFrame):
         self.close_waypoint_mode_button = Button(self, text="Disable Waypoint Mode", command=lambda: controller.show_frame(ControlOptionsPage))
         self.close_waypoint_mode_button.grid(row=row_index, column= 0, rowspan=1, columnspan =1,padx=20, pady=5,sticky="ew")
 
-        # Path Generation Frame
-        self.path_generation_frame = LabelFrame(self, text="Path Generation")
+        # Orientation Frame
+        self.path_generation_frame = LabelFrame(self, text="Orientation Along Path")
         self.path_generation_frame.grid(row = row_index, column=1, rowspan=6, columnspan=3, padx=20, pady=10, sticky="new")
         row_index +=1
-        
+       
 
-        # Path Generation Frame
-        self.preset_patterns_frame = LabelFrame(self, text="Preset Patterns")
-        self.preset_patterns_frame.grid(row = row_index, column=4, rowspan=10, columnspan=3, padx=20, pady=10, sticky="new")
-        row_index +=1
-        
-
-    
-      
-        # self.erase_waypoints_button = Button(self, text="Erase all waypoints", command=lambda: controller.erase_waypoints())
-        # self.erase_waypoints_button.grid(row= row_index, column=1, columnspan=1, sticky="ew", padx=20, pady=2)
-        
-
-        # self.other_button = Button(self, text="Follow Path", command=lambda: controller.hold_pose_button_function())
-        # self.other_button.grid(row= row_index, column=2, columnspan=1, sticky="ew", padx=20, pady=2)
-        
-        
-        
-        row_index+=1
-
-
+        # # Path Generation Frame
+        # self.path_generation_frame = LabelFrame(self, text="Path Generation")
+        # self.path_generation_frame.grid(row = row_index, column=1, rowspan=6, columnspan=3, padx=20, pady=10, sticky="new")
+        # row_index +=1
+       
         self.hold_pose_button = Button(self, text="Follow Path", command=lambda: self.hold_pose_button_function(controller))
         # var_text = StringVar()
         if controller.hold_pose:
@@ -1270,6 +1442,7 @@ class WaypointFrame(LabelFrame):
             self.hold_pose_button.configure(text = "Hold Pose")
         
         self.hold_pose_button.grid(row= row_index, column=0, rowspan=1, columnspan=1, sticky="ew", padx=20, pady=5)
+        row_index+=1
         # self.hold_pose_button = Button(self, text="Follow Path", command=lambda: self.hold_pose_button_function(controller))
         # self.hold_pose_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=5)
       
@@ -1280,19 +1453,20 @@ class WaypointFrame(LabelFrame):
         # self.other_button.grid(row= row_index, column=2, columnspan=1, sticky="ew", padx=20, pady=2)
         
         
-        
-        
-        row_index+=1
+    
          
         self.erase_waypoints_button = Button(self, text="Erase all waypoints", command=lambda: self.erase_waypoints(controller))
         self.erase_waypoints_button.grid(row= row_index, column=0, rowspan=1, columnspan=1, sticky="ew", padx=20, pady=5)
-
         row_index+=1
+
         self.open_controller_params_button = Button(self, text=f"Edit Controller Parameters", command=lambda: self.open_controller_params_button_function(controller))
         self.open_controller_params_button.grid(row= row_index, column=0, rowspan=1, columnspan=1, sticky="ew", padx=20, pady=5)
-    
-      
         row_index+=1
+
+        self.open_preset_patterns_button = Button(self, text=f"Open Preset Patterns", command=lambda: self.open_preset_patterns_button_function(controller))
+        self.open_preset_patterns_button.grid(row= row_index, column=0, rowspan=1, columnspan=1, sticky="ew", padx=20, pady=5)
+        row_index+=1
+
 
         # add waypoints frame
         self.add_waypoints_frame = LabelFrame(self, text="Add Waypoints")
@@ -1453,9 +1627,8 @@ class WaypointFrame(LabelFrame):
 
         '''
     
-       
+        '''
         # path generation frame
-
         path_options = {"Straight Line" : 1,
                 "Sine Wave" :  2,
                 "Arc" :  3}
@@ -1498,62 +1671,8 @@ class WaypointFrame(LabelFrame):
 
         submit_path_button = Button(self.path_generation_frame, text=f"Submit", command=lambda: controller.visualize_path(path_option_button_text.get(), orientation_option_button_text.get()))
         submit_path_button.grid(row = 1, column=2,padx=5, pady=5, sticky='w')  
-         
-        # preset patterns frames
-        row_index = 0 
-        start_point_label = Label(self.preset_patterns_frame, text="Specify start pose relative to: ")
-        start_point_label.grid(row=0, column=0,columnspan=1, padx=20, pady=10, sticky='ew')
-
-        for (text, value) in relative_options.items():
         
-            relative_option_button = tk.Radiobutton(self.preset_patterns_frame, text = text, variable =  relative_option_button_text, 
-                        value = value, indicatoron=0, padx=5,pady=5)
-        
-            
-            relative_option_button.grid(row = 0, column=value, padx=20, pady=5, sticky="ew")
-
-
-        row_index = 2
-        self.square_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Square Pattern")
-        self.square_pattern_frame.grid(row = row_index, column=0, rowspan=2, columnspan=3, padx=20, pady=10, sticky="new")
-        row_index +=2
-
-        # self.lawnmower_frame = LabelFrame(self.preset_patterns_frame , text="Lawnmower Pattern")
-        # self.lawnmower_frame.grid(row = row_index, column=0, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
-        # row_index +=1
-
-
-        self.circle_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Orbit Pattern")
-        self.circle_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
-        row_index +=2
-
-
-        # square pattern frame
-    
-        square_size_label = Label(self.square_pattern_frame, text="length (m)")
-        square_size_label.grid(row=0, column=0, padx=5, pady=5)
-        square_size = StringVar()
-        square_size_entry = Entry(self.square_pattern_frame,textvariable = square_size, width=10).grid(row=0, column=1,padx=5, pady=5, sticky="ew")
-        
-        # visualize_generate_square_path_button = Button(self.square_pattern_frame, text=f"Visualize", command=lambda: controller.generate_square(relative_option_button_text.get(), False, square_size.get())) #command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get()))
-        # visualize_generate_square_path_button.grid(row = 0, column=2,padx=5, pady=5)   
-        
-        submit_generate_square_path_button = Button(self.square_pattern_frame, text=f"Submit", command=lambda: controller.generate_square(relative_option_button_text.get(), square_size.get()))
-        submit_generate_square_path_button.grid(row = 0, column=2,padx=5, pady=5)   
-
-        #  circle pattern frame
-        circle_radius_label = Label(self.circle_pattern_frame, text="radius (m)")
-        circle_radius_label.grid(row=0, column=0, padx=5, pady=5)
-        radius = StringVar()
-        radius_entry = Entry(self.circle_pattern_frame,textvariable = radius, width=10).grid(row=0, column=1,padx=5, pady=5, sticky="ew")
-        
-        # visualize_generate_square_path_button = Button(self.square_pattern_frame, text=f"Visualize", command=lambda: controller.generate_square(relative_option_button_text.get(), False, square_size.get())) #command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get()))
-        # visualize_generate_square_path_button.grid(row = 0, column=2,padx=5, pady=5)   
-        
-        submit_generate_circle_path_button = Button(self.circle_pattern_frame, text=f"Submit", command=lambda: controller.generate_circle(relative_option_button_text.get(), radius.get()))
-        submit_generate_circle_path_button.grid(row = 0, column=2,padx=5, pady=5)   
-
-
+       '''
 
     def path_generation_button(self, indicator):
         # self.path_type_indicator = indicator
@@ -1597,11 +1716,24 @@ class WaypointFrame(LabelFrame):
 
         controller.open_close_controller_params_window()
 
+    def open_preset_patterns_button_function(self,controller):
+        if not controller.open_preset_patterns_frame:
+            controller.open_preset_patterns_frame = True
+            text = "Close Preset Patterns "
+        elif controller.open_preset_patterns_frame:    
+            controller.open_preset_patterns_frame  = False
+            text = "Open Preset Patterns"
+            
+
+        self.open_preset_patterns_button.configure(text=f"{text}")
+
+        controller.open_close_preset_patterns_window()
+
+
+# frames that open in new Windows
 class ControllerParamFrame(Toplevel):
     def __init__(self, parent, controller):
-        # LabelFrame.__init__(self, parent, text = "Controller Parameters")
-        # controller_params_window = Toplevel(self.master)
-        # super.__init__(self,parent,text = "Controller Parameters")
+        
         super().__init__(master = parent)
         self.title("Controller Parameters")
         # Add a label widget
@@ -1832,6 +1964,213 @@ class ControllerParamFrame(Toplevel):
         controller.open_controller_params_frame = False
         controller.open_close_controller_params_window()
 
+class PresetPatternsFrame(Toplevel):
+    def __init__(self, parent, controller):
+
+        super().__init__(master = parent)
+        self.title("Preset Patterns")
+       
+        row_index = 0
+
+        # Button to return to the main window
+        self.preset_patterns_frame_back_button = Button(self, text="Close Window", command=lambda: self.close(controller))
+        self.preset_patterns_frame_back_button.grid(row = row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=20)
+        row_index +=1
+
+        # Preset patterns frames
+        self.preset_patterns_frame = LabelFrame(self, text="Preset Patterns")
+        self.preset_patterns_frame.grid(row = row_index, column=0, rowspan=10, columnspan=1, padx=20, pady=10, sticky="new")
+        row_index +=1
+
+
+         
+        relative_options = {"current pose" : 1,
+                        "last waypoint" :  2,
+                        }
+        rotate_direction_options = {"clockwise" : 1,
+                                    "counterclockwise" :2
+                                    }
+
+        orientation_options = {"start Orientation" : 1,
+                                "Target Orientation" : 2,
+                                "Smooth Transition" : 3,
+                                "Face Waypoint" : 4
+
+                            }
+        
+        relative_option_button_text = StringVar()
+        rotate_directions_button_text1 = StringVar()
+        rotate_directions_button_text2 = StringVar()
+        rotate_directions_button_text3 = StringVar()
+        rotate_directions_button_text4 = StringVar()
+    
+        # preset patterns frames
+        row_index = 0 
+        start_point_label = Label(self.preset_patterns_frame, text="Specify start pose relative to: ")
+        start_point_label.grid(row=0, column=0, columnspan=2, padx=20, pady=10, sticky='ew')
+
+        for (text, value) in relative_options.items():
+        
+            relative_option_button = tk.Radiobutton(self.preset_patterns_frame, text = text, variable =  relative_option_button_text, 
+                        value = value, indicatoron=0, padx=10,pady=5)
+        
+            
+            # relative_option_button.grid(row = 0, column=value, padx=5, pady=5, sticky="ew")
+            relative_option_button.grid(row = 1, column=value-1, padx=5, pady=5, sticky="ew")
+
+
+        row_index = 2
+        # self.square_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Square Pattern")
+        # self.square_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
+        # # row_index +=1
+        
+        # self.lawnmower_frame = LabelFrame(self.preset_patterns_frame , text="Lawnmower Pattern")
+        # self.lawnmower_frame.grid(row = row_index, column=1, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
+        # row_index +=1
+
+    
+
+        self.circle_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Orbit Pattern")
+        self.circle_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
+        row_index +=1
+
+        # self.lawnmower_frame = LabelFrame(self.preset_patterns_frame , text="Lawnmower Pattern")
+        # self.lawnmower_frame.grid(row = row_index, column=0, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
+        # row_index +=1
+
+        self.arc_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Arc Pattern")
+        self.arc_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
+        row_index +=1
+
+
+        
+        self.lawnmower_frame = LabelFrame(self.preset_patterns_frame , text="Lawnmower Pattern")
+        self.lawnmower_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
+        row_index +=1
+        
+
+        self.square_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Square Pattern")
+        self.square_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
+        row_index +=1
+
+    
+
+
+
+        # square pattern frame
+        row_index = 0
+        # choose rotation direction
+    
+        for (text, value) in rotate_direction_options.items():
+        
+            rotation_direction_option_button1 = tk.Radiobutton(self.square_pattern_frame, text = text, variable =  rotate_directions_button_text1, 
+                        value = value, indicatoron=0, padx=10,pady=5)
+            rotation_direction_option_button1.grid(row = row_index, column = value-1, padx=5, pady=5, sticky="ew")
+
+        row_index +=1
+        square_size_label = Label(self.square_pattern_frame, text="Length (m)")
+        square_size_label.grid(row=row_index, column=0, padx=5, pady=5)
+        square_size = StringVar()
+        square_size_entry = Entry(self.square_pattern_frame,textvariable = square_size, width=10).grid(row=row_index, column=1,columnspan=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+
+        submit_generate_square_path_button = Button(self.square_pattern_frame, text=f"Submit", command=lambda: controller.generate_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get()))
+        submit_generate_square_path_button.grid(row = row_index, column=0, columnspan =2, padx=5, pady=5, sticky = 'ew')   
+
+        # circle pattern frame
+        row_index = 0
+
+        # rotation direction choice
+        for (text, value) in rotate_direction_options.items():
+        
+            rotation_direction_option_button2 = tk.Radiobutton(self.circle_pattern_frame , text = text, variable =  rotate_directions_button_text2, 
+                        value = value, indicatoron=0, padx=10,pady=5)
+            rotation_direction_option_button2.grid(row = row_index, column = value-1, padx=5, pady=5, sticky="ew")
+
+        row_index +=1
+        
+        # specifying parameters
+        circle_radius_label = Label(self.circle_pattern_frame, text="Radius (m)")
+        circle_radius_label.grid(row= row_index, column=0, padx=5, pady=5)
+        radius = StringVar()
+        radius_entry = Entry(self.circle_pattern_frame,textvariable = radius, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+
+        angle_label = Label(self.circle_pattern_frame, text="Angle (deg)")
+        angle_label.grid(row= row_index, column=0, padx=5, pady=5)
+        angle = StringVar()
+        angle_entry = Entry(self.circle_pattern_frame,textvariable = angle, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+        
+        submit_generate_circle_path_button = Button(self.circle_pattern_frame, text=f"Submit", command=lambda: controller.generate_circle(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get()))
+        submit_generate_circle_path_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')   
+
+
+        # Lawnmower pattern frame
+        row_index = 0
+        # rotation direction choice
+        for (text, value) in rotate_direction_options.items():
+        
+            rotation_direction_option_button3 = tk.Radiobutton(self.lawnmower_frame, text = text, variable =  rotate_directions_button_text3, 
+                        value = value, indicatoron=0, padx=10,pady=5)
+            rotation_direction_option_button3.grid(row = row_index, column = value-1, padx=5, pady=5, sticky="ew")
+
+        row_index +=1
+        
+        # specifying parameters
+        leg_length_label = Label(self.lawnmower_frame, text="leg Length (m)")
+        leg_length_label.grid(row= row_index, column=0, padx=5, pady=5)
+        leg_length = StringVar()
+        leg_length_entry = Entry(self.lawnmower_frame,textvariable = leg_length, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+
+        leg_spacing_label = Label(self.lawnmower_frame, text="Leg Spacing (m)")
+        leg_spacing_label.grid(row= row_index, column=0, padx=5, pady=5)
+        leg_spacing = StringVar()
+        angle_entry = Entry(self.lawnmower_frame,textvariable = leg_spacing, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+
+        number_of_legs_label = Label(self.lawnmower_frame, text="Number of Legs")
+        number_of_legs_label.grid(row= row_index, column=0, padx=5, pady=5)
+        n_legs = StringVar()
+        n_legs_entry = Entry(self.lawnmower_frame,textvariable = n_legs, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+
+
+        submit_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Submit", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get()))
+        submit_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')
+
+
+        # rotation direction choice
+        for (text, value) in rotate_direction_options.items():
+        
+            rotation_direction_option_button4 = tk.Radiobutton(self.arc_pattern_frame , text = text, variable =  rotate_directions_button_text4, 
+                        value = value, indicatoron=0, padx=10,pady=5)
+            rotation_direction_option_button4.grid(row = row_index, column = value-1, padx=5, pady=5, sticky="ew")
+
+        row_index +=1
+        
+        # specifying parameters
+        arc_radius_label = Label(self.arc_pattern_frame, text="Radius (m)")
+        arc_radius_label.grid(row= row_index, column=0, padx=5, pady=5)
+        arc_radius = StringVar()
+        arc_radius_entry = Entry(self.arc_pattern_frame,textvariable = arc_radius, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+
+        arc_angle_label = Label(self.arc_pattern_frame, text="Angle (deg)")
+        arc_angle_label.grid(row= row_index, column=0, padx=5, pady=5)
+        arc_angle = StringVar()
+        arc_angle_entry = Entry(self.arc_pattern_frame,textvariable = arc_angle, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
+        row_index +=1
+        
+        submit_generate_arc_path_button = Button(self.arc_pattern_frame, text=f"Submit", command=lambda: controller.generate_arc(relative_option_button_text.get(), arc_radius.get(), arc_angle.get(), rotate_directions_button_text4.get()))
+        submit_generate_arc_path_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')   
+
+
+
+    def close(self,controller):
+        controller.open_preset_patterns_frame = False
+        controller.open_close_preset_patterns_window()
 
 
 if __name__ == '__main__':

@@ -4,13 +4,10 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Status1
-        - /Grid1
-        - /Single Waypoint Visualizer1
-        - /RobotModel1/Links1
+        - /Path1
         - /Map1/Position1
-      Splitter Ratio: 0.520588219165802
-    Tree Height: 302
+      Splitter Ratio: 0.4993757903575897
+    Tree Height: 301
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -35,15 +32,15 @@ Panels:
     legend_enable: true
     refresh_freq: 10
     topic_0_color: 0
-    topic_0_name: /plot_vx
+    topic_0_name: /vx
     topic_0_thickness: 1
     topic_0_type: std_msgs/Float32
     topic_1_color: 1
-    topic_1_name: /plot_vy
+    topic_1_name: /vx_setpoint
     topic_1_thickness: 1
     topic_1_type: std_msgs/Float32
     topic_2_color: 2
-    topic_2_name: /vx_setpoint
+    topic_2_name: /vy
     topic_2_thickness: 1
     topic_2_type: std_msgs/Float32
     topic_3_color: 3
@@ -51,7 +48,7 @@ Panels:
     topic_3_thickness: 1
     topic_3_type: std_msgs/Float32
     w_time: 10
-    window_time_enable: true
+    window_time_enable: false
     y_max: 10
     y_min: 0
     yaxis_rescale_auto: true
@@ -66,6 +63,42 @@ Panels:
     topic_0_type: std_msgs/Float32
     w_time: 10
     window_time_enable: true
+    y_max: 10
+    y_min: 0
+    yaxis_rescale_auto: true
+  - Class: graph_rviz_plugin/Line graph
+    Name: Line graph
+    export_directory: ""
+    legend_enable: true
+    refresh_freq: 40
+    topic_0_color: 0
+    topic_0_name: /x_pwm
+    topic_0_thickness: 1
+    topic_0_type: std_msgs/Float32
+    topic_1_color: 1
+    topic_1_name: /y_pwm
+    topic_1_thickness: 1
+    topic_1_type: std_msgs/Float32
+    w_time: 1
+    window_time_enable: false
+    y_max: 10
+    y_min: 0
+    yaxis_rescale_auto: true
+  - Class: graph_rviz_plugin/Line graph
+    Name: Line graph
+    export_directory: ""
+    legend_enable: true
+    refresh_freq: 40
+    topic_0_color: 0
+    topic_0_name: /vyaw
+    topic_0_thickness: 1
+    topic_0_type: std_msgs/Float32
+    topic_1_color: 1
+    topic_1_name: /vyaw_setpoint
+    topic_1_thickness: 1
+    topic_1_type: std_msgs/Float32
+    w_time: 1
+    window_time_enable: false
     y_max: 10
     y_min: 0
     yaxis_rescale_auto: true
@@ -183,7 +216,7 @@ Visualization Manager:
         base_link:
           Alpha: 1
           Show Axes: false
-          Show Trail: true
+          Show Trail: false
           Value: true
       Name: RobotModel
       Robot Description: robot_description
@@ -225,7 +258,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Actual Path
+      Name: Path
       Offset:
         X: 0
         Y: 0
@@ -236,7 +269,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /actual_path
+      Topic: /robot_path
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -267,7 +300,7 @@ Visualization Manager:
       Shaft Length: 1
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
-      Topic: /dvl/local_position
+      Topic: /state
       Unreliable: false
       Value: false
     - Alpha: 0.699999988079071
@@ -279,6 +312,23 @@ Visualization Manager:
       Topic: /occupancy_map
       Unreliable: false
       Use Timestamp: false
+      Value: false
+    - Alpha: 1
+      Arrow Length: 0.20000000298023224
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 117; 80; 123
+      Enabled: false
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Queue Size: 10
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (3D)
+      Topic: /int_poses
+      Unreliable: false
       Value: false
   Enabled: true
   Global Options:
@@ -308,7 +358,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 29.39773178100586
+      Distance: 17.127216339111328
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -324,19 +374,19 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4853982627391815
+      Pitch: 0.6953975558280945
       Target Frame: base_link
-      Yaw: 0.8153979182243347
+      Yaw: 5.740406036376953
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1040
+  Height: 1078
   Hide Left Dock: false
   Hide Right Dock: false
   Line graph:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001c6000003b6fc020000000afb0000001200530065006c0065006300740069006f006e000000003d0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073000000003d000001b9000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb00000014004c0069006e0065002000670072006100700068000000003d000001d90000007900fffffffb00000014004c0069006e0065002000670072006100700068000000003d000003b60000007900ffffff0000000100000108000003b6fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000003b6000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b00000003efc0100000002fb0000000800540069006d00650000000000000004b00000041800fffffffb0000000800540069006d006501000000000000045000000000000000000000039c000003b600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000323000003dcfc020000000cfb0000001200530065006c0065006300740069006f006e000000003d0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000001b8000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb00000014004c0069006e006500200067007200610070006801000001fb000001300000007900fffffffb00000014004c0069006e0065002000670072006100700068000000015c0000021b0000007900fffffffb00000014004c0069006e006500200067007200610070006800000002c3000000d80000007900fffffffb00000014004c0069006e00650020006700720061007000680100000331000000e80000007900ffffff0000000100000108000003dcfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d000003dc000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b00000003efc0100000002fb0000000800540069006d00650000000000000004b00000041800fffffffb0000000800540069006d0065010000000000000450000000000000000000000301000003dc00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -345,6 +395,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: false
-  Width: 924
-  X: 996
+  Width: 1848
+  X: 72
   Y: 27
