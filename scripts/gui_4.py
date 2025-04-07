@@ -26,9 +26,9 @@ class windows(Tk):
         self.pub13 = rospy.Publisher("reset_waypoints", Bool, queue_size=10)
         self.pub14 = rospy.Publisher("path_generation_type", Int8MultiArray, queue_size=10)
         self.pub15 = rospy.Publisher("path_orientation_style", Int8MultiArray, queue_size=10)
-        self.pub16 = rospy.Publisher("visualize_preset_pattern", PoseArray, queue_size=10) # not used yet
+        self.pub16 = rospy.Publisher("visualize_preset_pattern", PoseArray, queue_size=1) # not used yet
         self.pub17= rospy.Publisher("path_planner_parameters", Float32MultiArray, queue_size=10) # not used yet
-
+        self.pub18 = rospy.Publisher("visualize_preset_pattern_path", Path, queue_size=1) # not used yet
         # Setting window icon
         self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
         self.iconphoto(True, self.icon)
@@ -77,6 +77,18 @@ class windows(Tk):
         # the first value in data indicates what the rest of the data will be to the subscriber in motion controller
         self.path_planner_msgs  = Float32MultiArray() 
         self.path_planner_msgs.data = []   
+
+        # for preset pattern visualization
+        self.preset_pattern = PoseArray()
+        self.preset_pattern.header.frame_id="NED"
+
+        self.preset_pattern_path = Path()
+        self.preset_pattern_path.header.frame_id = "NED"
+
+        self.temp_pose = PoseStamped()
+
+
+
     
     
         # we dont really need to call back the values
@@ -902,7 +914,54 @@ class windows(Tk):
             self.hold_pose = False
 
         self.pub7.publish(self.hold_pose)
-   
+       
+    def submit_pos_threshold(self, threshold):
+        try:
+            indicator = 1
+            rospy.loginfo("Setting position threshold")
+            threshold = self.entry_to_float(threshold)
+
+            self.path_planner_msgs.data = [
+                    indicator,
+                    threshold
+                    ]
+            self.pub17.publish(self.path_planner_msgs)
+
+        except: 
+            rospy.logerr("Encountered an error in submit_pos_threshold")
+    
+    def submit_orientation_threshold(self, threshold):
+        try:
+            indicator = 2
+            rospy.loginfo("Setting orientation threshold")
+            threshold = self.entry_to_float(threshold)
+
+            self.path_planner_msgs.data = [
+                    indicator,
+                    threshold
+                    ]
+            
+            self.pub17.publish(self.path_planner_msgs)
+            
+        except: 
+            rospy.logerr("Encountered an error in submit_orientation_threshold")
+    
+    def submit_lookahead_distance(self, distance):
+        try:
+            indicator = 3
+            rospy.loginfo("Setting lookahead distance")
+            distance= self.entry_to_float(distance)
+
+            self.path_planner_msgs.data = [
+                    indicator,
+                    distance
+                    ]
+            
+            self.pub17.publish(self.path_planner_msgs)
+            
+        except: 
+            rospy.logerr("Encountered an error in submit_lookahead_distance")
+        
     def submit_controller_gains(self, indicator,kpx, kdx, kix,
              kpy, kdy, kiy,
              kpz, kdz, kiz,
@@ -998,16 +1057,33 @@ class windows(Tk):
         if size == 0: 
             rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
             size = 1 
-
+          
         if relative_indicator == "1":
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
-        elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+            
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
+                        
+               
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(0,0,0,0, path_orientation_style) #dont really need this here tbh
+           
         elif relative_indicator =="":
             rospy.logwarn("start point not selected, defaulting to current pose")
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
+                 
+        
+        # if relative_indicator == "1":
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+        # elif relative_indicator =="":
+        #     rospy.logwarn("start point not selected, defaulting to current pose")
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
 
         if rotate_direction == "1":
             rotate = 90
@@ -1024,6 +1100,19 @@ class windows(Tk):
         self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
         self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
         self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
+
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+        
+        # erase thevisualization and publish the empty arrays
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+        
     
     def generate_orbit(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
         radius = self.entry_to_float(radius)
@@ -1033,17 +1122,34 @@ class windows(Tk):
             rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
             radius = 1 
 
+
         if relative_indicator == "1":
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0,path_orientation_style)
+            
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
 
         elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0,path_orientation_style)
-
+            self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+                   
         elif relative_indicator =="":
-            rospy.logwarn("start point not selected defaulting to current pose")
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
+
+
+
+        # if relative_indicator == "1":
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0,path_orientation_style)
+
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(0,0,0,0,path_orientation_style)
+
+        # elif relative_indicator =="":
+        #     rospy.logwarn("start point not selected defaulting to current pose")
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
         
         if rotation_direction =="1":
             direction_sign = 1
@@ -1058,7 +1164,7 @@ class windows(Tk):
 
 
         # determine how many points you want on the circle
-        interval = 20*np.pi/180
+        interval = 15*np.pi/180
         
         if rotation_angle == 0:
             rospy.logwarn("Cannot create circle of angle 0, defaulting to 360 degrees ")
@@ -1090,7 +1196,8 @@ class windows(Tk):
 
         #avoid re-adding the first waypoint
         i = 1 
-        while i < num_points:    
+        # while i < num_points:
+        for i in range(1, num_points):    
 
             # get angle and normailize it
             angle = start_angle+(i * interval * direction_sign)
@@ -1130,7 +1237,19 @@ class windows(Tk):
         # get yaw of last point in degrees
         yaw = (angle+np.pi)*180/np.pi
 
-        self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)     
+        self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)  
+
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+        
+        # erase thevisualization and publish the empty arrays
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)   
     
     
     def generate_arc(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
@@ -1141,17 +1260,33 @@ class windows(Tk):
             rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
             radius = 1 
 
+        # if relative_indicator == "1":
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+
+        # elif relative_indicator =="":
+        #     rospy.logwarn("start point not selected defaulting to current pose")
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+
+
         if relative_indicator == "1":
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
 
         elif relative_indicator =="2":
             self.submit_waypoint_2(0,0,0,0, path_orientation_style)
-
+                   
         elif relative_indicator =="":
-            rospy.logwarn("start point not selected defaulting to current pose")
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
+
         
 
         #  get last waypoint transform
@@ -1201,8 +1336,7 @@ class windows(Tk):
     
 
         #avoid re-adding the first waypoint
-        i = 1 
-        while i < num_points:    
+        for i in range (1, num_points):
 
             # get angle and normailize it
             angle = start_angle+(i * interval * direction_sign)
@@ -1232,7 +1366,7 @@ class windows(Tk):
             yaw = yaw *180/np.pi
     
             self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)
-            i+=1
+            
         
         # add the last waypoint at exact desired location
         angle = start_angle+(rotation_angle * direction_sign)
@@ -1247,11 +1381,22 @@ class windows(Tk):
         
         # get yaw of last point in degrees
         yaw = (angle+np.pi/2)*180/np.pi
+        self.submit_waypoint_3(new_x, new_y, z, yaw)   
 
-        # self.submit_waypoint_3(new_x, new_y, z, yaw)     
-    
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+        
+        # erase thevisualization and publish the empty arrays
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+     
     def generate_lawnmower(self, relative_indicator, leg_length, leg_spacing, n_legs, rotate_direction, path_orientation_style):
-       
+      
         leg_length = self.entry_to_float(leg_length)
         leg_spacing = self.entry_to_float(leg_spacing)
         n_legs = self.entry_to_int(n_legs)
@@ -1262,16 +1407,17 @@ class windows(Tk):
 
         if leg_spacing == 0:
             rospy.logwarn("Cannot create leg spacing of size 1, defaulting to 1 m ")
-            leg_spacing  = 1 
+            leg_spacing  = 1
 
         if n_legs == 0:
-            rospy.logwarn("Cannot create 0 legs, defaulting to 1 leg ")
-            n_legs = 1
+            rospy.logwarn("Cannot create 0 legs, defaulting to 2 legs ")
+            n_legs = 2
 
         if rotate_direction == "1":
             rotate = 90
         elif rotate_direction == "2":
             rotate = -90
+        
         elif rotate_direction =="":
             rospy.logwarn("rotation direction not selected, defaulting to cw")
             rotate = 90 
@@ -1279,8 +1425,13 @@ class windows(Tk):
   
 
         if relative_indicator == "1":
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
+                        
+            # self.visualize_waypoint_1(0,0,0,0)
+            # self.submit_waypoint_1(0,0,0,0, path_orientation_style)
             self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
             
         elif relative_indicator =="2":
@@ -1289,9 +1440,14 @@ class windows(Tk):
 
         elif relative_indicator =="":
             rospy.logwarn("start point not selected, defaulting to current pose")
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
+
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw, path_orientation_style)
+                 
+            # self.visualize_waypoint_1(0,0,0,0)
+            # self.submit_waypoint_1(0,0,0,0, path_orientation_style)
             self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+            
 
         # self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
 
@@ -1322,56 +1478,643 @@ class windows(Tk):
             else:
                 rotate *=-1
             self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
-        
-    def submit_pos_threshold(self, threshold):
-        try:
-            indicator = 1
-            rospy.loginfo("Setting position threshold")
-            threshold = self.entry_to_float(threshold)
 
-            self.path_planner_msgs.data = [
-                    indicator,
-                    threshold
-                    ]
-            self.pub17.publish(self.path_planner_msgs)
-
-        except: 
-            rospy.logerr("Encountered an error in submit_pos_threshold")
     
-    def submit_orientation_threshold(self, threshold):
-        try:
-            indicator = 2
-            rospy.loginfo("Setting orientation threshold")
-            threshold = self.entry_to_float(threshold)
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+        
+        # erase thevisualization and publish the empty arrays
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+        
+    def visualize_lawnmower(self, relative_indicator, leg_length, leg_spacing, n_legs, rotate_direction, path_orientation_style):
+        
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+       
+        leg_length = self.entry_to_float(leg_length)
+        leg_spacing = self.entry_to_float(leg_spacing)
+        n_legs = self.entry_to_int(n_legs)
 
-            self.path_planner_msgs.data = [
-                    indicator,
-                    threshold
-                    ]
+        if leg_length == 0: 
+            rospy.logwarn("Cannot create leg length of size 0, defaulting to 1 m ")
+            leg_length = 1 
+
+        if leg_spacing == 0:
+            rospy.logwarn("Cannot create leg spacing of size 1, defaulting to 1 m ")
+            leg_spacing  = 1 
+
+        if n_legs == 0:
+            rospy.logwarn("Cannot create 0 legs, defaulting to 2 legs ")
+            n_legs = 2
+
+        if rotate_direction == "1":
+            rotate = 90
+        elif rotate_direction == "2":
+            rotate = -90
+        elif rotate_direction =="":
+            rospy.logwarn("rotation direction not selected, defaulting to cw")
+            rotate = 90 
+        
+  
+
+        if relative_indicator == "1":
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(leg_length,0,0,rotate, last_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
             
-            self.pub17.publish(self.path_planner_msgs)
+        elif relative_indicator =="2":
+           
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(leg_length,0,0,rotate, self.last_waypoint_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+          
+
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(leg_length,0,0,rotate, last_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+        
+        for i in range(1,n_legs):
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(leg_spacing,0,0,rotate, last_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+        
+            if i == n_legs-1:
+                rotate = 0
+            else:
+                rotate *=-1
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(leg_length, 0,0,rotate, last_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=NORMAL)
+
+        # buttons are disabled until the next pattern is visualized
+        # self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+        
+    def visualize_square(self, relative_indicator, size, rotate_direction, path_orientation_style):
+
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        
+        size = self.entry_to_float(size)
+        if size == 0: 
+            rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
+            size = 1 
+
+        # if relative_indicator == "1":
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+        # elif relative_indicator =="":
+        #     rospy.logwarn("start point not selected, defaulting to current pose")
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+
+        
+        if relative_indicator == "1":
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
             
-        except: 
-            rospy.logerr("Encountered an error in submit_orientation_threshold")
+        elif relative_indicator =="2":
+           
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(0,0,0,0,self.last_waypoint_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+          
+
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+
+        if rotate_direction == "1":
+            rotate = 90
+        elif rotate_direction == "2":
+            rotate = -90
+        elif relative_indicator =="":
+            rospy.logwarn("rotation direction not selected, defaulting to cw")
+            rotate = 90 
+        else: 
+            rotate = 90
     
-    def submit_lookahead_distance(self, distance):
-        try:
-            indicator = 3
-            rospy.loginfo("Setting lookahead distance")
-            distance= self.entry_to_float(distance)
+        waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(size,0,0,rotate, last_transform)
+        self.preset_pattern.poses.append(waypoint.pose)
+        self.preset_pattern_path.poses.append(waypoint)
+        
+        waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(size,0,0,rotate, last_transform)
+        self.preset_pattern.poses.append(waypoint.pose)
+        self.preset_pattern_path.poses.append(waypoint)
+        
+        waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(size,0,0,rotate, last_transform)
+        self.preset_pattern.poses.append(waypoint.pose)
+        self.preset_pattern_path.poses.append(waypoint)
+        
+        waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(size,0,0,rotate, last_transform)
+        self.preset_pattern.poses.append(waypoint.pose)
+        self.preset_pattern_path.poses.append(waypoint)
 
-            self.path_planner_msgs.data = [
-                    indicator,
-                    distance
-                    ]
+
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=NORMAL)
+
+
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        # self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+                
+    def visualize_arc(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        
+        radius = self.entry_to_float(radius)
+        rotation_angle= self.entry_to_float(rotation_angle)*np.pi/180
+
+        if radius == 0: 
+            rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
+            radius = 1 
+
+        if relative_indicator == "1":
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
             
-            self.pub17.publish(self.path_planner_msgs)
+            # self.visualize_waypoint_1(0,0,0,0)
+            # self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+
+        elif relative_indicator =="2":
+            # self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(0,0,0,0,self.last_waypoint_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected defaulting to current pose")
+            # self.visualize_waypoint_1(0,0,0,0)
+            # self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+        
+
+        #  get last waypoint transform
+        roll, pitch , yaw = euler_from_matrix(self.last_waypoint_transform)
+
+        if rotation_direction =="1":
+            direction_sign = 1
+            start_angle = yaw -np.pi/2
+
+        elif rotation_direction == "2":
+            direction_sign = -1
+            start_angle = yaw + np.pi/2
             
-        except: 
-            rospy.logerr("Encountered an error in submit_lookahead_distance")
+        elif rotation_direction == "":
+            rospy.logwarn("Rotation direction was not specified, defaulting to cw")
+            direction_sign = 1
+            start_angle = yaw - np.pi/2
+      
+        # normalize starting angle
+        if start_angle > np.pi:
+            start_angle -= 2 * np.pi
+        elif start_angle < -np.pi:
+            start_angle += 2 * np.pi
+
+
+
+        # determine how many points you want on the circle
+        interval = 15 * np.pi/180
         
+        if rotation_angle == 0:
+            rospy.logwarn("Cannot create circle of angle 0, defaulting to 90 degrees ")
+            rotation_angle = 90 *np.pi/180
+            
+        elif rotation_angle < interval:
+            interval = rotation_angle
+
         
+        num_points = int(rotation_angle/interval)+1
+
+        # find center of circle 
+        trans_matrix = translation_matrix([0,radius*direction_sign,0])
+        transform = concatenate_matrices(self.last_waypoint_transform, trans_matrix)
+        x, y, z = translation_from_matrix(transform) 
         
+        # debugging center point
+        # self.submit_waypoint_3(x, y, z, start_angle*180/np.pi)   
+    
+
+        #avoid re-adding the first waypoint
+        # i = 1 
+        # while i < num_points:  
+        for i in range(1,num_points): 
+
+            # get angle and normailize it
+            angle = start_angle+(i * interval * direction_sign)
+            if angle > np.pi:
+                angle -= 2 * np.pi
+            elif angle < -np.pi:
+                angle += 2 * np.pi
+        
+            # get new coordinates
+            new_x = x + (radius*np.cos(angle))
+            new_y = y + (radius*np.sin(angle))
+
+
+            # get yaw of new point
+            if direction_sign == 1:
+                yaw = angle + np.pi/2
+            elif direction_sign == -1:
+                yaw = angle - np.pi/2
+
+
+            if yaw > np.pi:
+                yaw -= 2 * np.pi
+            elif yaw < -np.pi:
+                yaw += 2 * np.pi
+
+            # convert to degrees
+            yaw = yaw *180/np.pi
+           
+            waypoint = self.preset_pattern_visualize_waypoint_3(new_x, new_y, z, yaw)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+          
+    
+            # self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)
+            # i+=1
+        
+        # add the last waypoint at exact desired location
+        angle = start_angle+(rotation_angle * direction_sign)
+        if angle > np.pi:
+            angle -= 2 * np.pi
+        elif angle < -np.pi:
+            angle += 2 * np.pi
+      
+        
+        new_x = x + (radius*np.cos(angle))
+        new_y = y + (radius*np.sin(angle))
+        
+        # get yaw of last point in degrees
+        yaw = (angle+np.pi/2)*180/np.pi
+
+        waypoint = self.preset_pattern_visualize_waypoint_3(new_x, new_y, z, yaw)
+        self.preset_pattern.poses.append(waypoint.pose)
+        self.preset_pattern_path.poses.append(waypoint)
+
+        # self.submit_waypoint_3(new_x, new_y, z, yaw)     
+
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+
+ 
+
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=NORMAL)
+     
+    def visualize_orbit(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
+        self.preset_pattern.poses.clear()
+        self.preset_pattern_path.poses.clear()
+        
+        radius = self.entry_to_float(radius)
+        rotation_angle= self.entry_to_float(rotation_angle)*np.pi/180
+
+        if radius == 0: 
+            rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
+            radius = 1 
+            
+        if relative_indicator == "1":
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+    
+
+        elif relative_indicator =="2":
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_2(0,0,0,0,self.last_waypoint_transform)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected defaulting to current pose")
+            waypoint, last_transform = self.preset_pattern_visualize_waypoint_1(0,0,0,0)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+        
+
+
+
+        # if relative_indicator == "1":
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0,path_orientation_style)
+
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(0,0,0,0,path_orientation_style)
+
+        # elif relative_indicator =="":
+        #     rospy.logwarn("start point not selected defaulting to current pose")
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+        
+        if rotation_direction =="1":
+            direction_sign = 1
+
+        elif rotation_direction == "2":
+            direction_sign = -1
+            
+        elif rotation_direction == "":
+               rospy.logwarn("Rotation direction was not specified, defaulting to cw")
+               direction_sign = 1
+
+
+
+        # determine how many points you want on the circle
+        interval = 20*np.pi/180
+        
+        if rotation_angle == 0:
+            rospy.logwarn("Cannot create circle of angle 0, defaulting to 360 degrees ")
+            rotation_angle = 360 *np.pi/180
+            
+        elif rotation_angle < interval:
+            interval = rotation_angle
+
+        
+        num_points = int(rotation_angle/interval)+1
+
+
+        # find center of circle 
+        trans_matrix = translation_matrix([radius,0,0])
+        transform = concatenate_matrices(self.last_waypoint_transform, trans_matrix)
+
+        # get starting angle
+        x,y,z = translation_from_matrix(transform) 
+        roll,pitch,yaw = euler_from_matrix(transform)
+
+        # normalize starting angle
+        start_angle = yaw + np.pi
+        if start_angle > np.pi:
+            start_angle -= 2 * np.pi
+        elif start_angle < -np.pi:
+            start_angle += 2 * np.pi
+
+    
+
+        #avoid re-adding the first waypoint
+        for i in range(1, num_points):
+            # get angle and normailize it
+            angle = start_angle+(i * interval * direction_sign)
+            if angle > np.pi:
+                angle -= 2 * np.pi
+            elif angle < -np.pi:
+                angle += 2 * np.pi
+        
+            new_x = x + (radius*np.cos(angle))
+            new_y = y + (radius*np.sin(angle))
+
+
+            # get yaw of new point
+            yaw = angle + np.pi
+            if yaw > np.pi:
+                yaw -= 2 * np.pi
+            elif yaw < -np.pi:
+                yaw += 2 * np.pi
+
+            # convert to degrees
+            yaw = yaw *180/np.pi
+
+            waypoint = self.preset_pattern_visualize_waypoint_3(new_x, new_y, z, yaw)
+            self.preset_pattern.poses.append(waypoint.pose)
+            self.preset_pattern_path.poses.append(waypoint)
+            
+            # self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)
+            # i+=1
+        
+        # add the last waypoint at exact desired location
+        angle = start_angle+(rotation_angle * direction_sign)
+        if angle > np.pi:
+            angle -= 2 * np.pi
+        elif angle < -np.pi:
+            angle += 2 * np.pi
+      
+        
+        new_x = x + (radius*np.cos(angle))
+        new_y = y + (radius*np.sin(angle))
+        
+        # get yaw of last point in degrees
+        yaw = (angle+np.pi)*180/np.pi
+
+        # self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)    
+        waypoint = self.preset_pattern_visualize_waypoint_3(new_x, new_y, z, yaw)
+        self.preset_pattern.poses.append(waypoint.pose)
+        self.preset_pattern_path.poses.append(waypoint) 
+
+
+        self.pub16.publish(self.preset_pattern)
+        self.pub18.publish(self.preset_pattern_path)
+
+ 
+
+        # buttons are disabled until the next pattern is visualized
+        self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+        self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=NORMAL)
+        self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+    
+
+    
+        
+    # used specifically to be able to visualize the preset patterns
+    def preset_pattern_visualize_waypoint_2(self,x,y,z,yaw,last_wp_transform):
+      
+        """Visualize the single waypoint relative to last waypoint added"""
+        try:
+            roll = 0
+            pitch = 0
+            # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
+
+            pose_msg = Pose()
+            # formatting for rviz visualization
+            pose_stamped_msg = PoseStamped()
+            pose_stamped_msg.header.frame_id = 'NED'
+
+
+            trans_matrix = translation_matrix([x,y,z])
+            rot_matrix = euler_matrix(roll,pitch,yaw)
+
+            transform = concatenate_matrices(trans_matrix, rot_matrix) #makes translation in current frame then rotates the orientationof the body
+            transform = concatenate_matrices(last_wp_transform, transform)
+
+
+            # convert to pose msg format
+            translation = translation_from_matrix(transform) 
+            quaternion = quaternion_from_matrix(transform)
+           
+            # updating pose_msg
+            pose_msg.position.x = translation[0] 
+            pose_msg.position.y = translation[1]
+            pose_msg.position.z = translation[2]
+            pose_msg.orientation.x = quaternion[0]
+            pose_msg.orientation.y = quaternion[1]
+            pose_msg.orientation.z = quaternion[2]
+            pose_msg.orientation.w = quaternion[3]
+
+
+            # formatting for rviz visualization
+            pose_stamped_msg.pose = pose_msg
+            # self.pub1.publish(pose_stamped_msg)
+
+            return pose_stamped_msg, transform
+
+
+            
+        except ValueError as ve:
+            rospy.logerr(f"Invalid input for waypoint: {ve}")
+    
+    def preset_pattern_visualize_waypoint_1(self,x,y,z,yaw):
+      
+        """Visualize the single waypoint relative to current pose"""
+        try:
+            roll = 0
+            pitch = 0
+            # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
+
+            # update the transform for the waypoint
+            trans_matrix = translation_matrix([x,y,z])
+            rot_matrix = euler_matrix(roll,pitch,yaw)
+            pose_msg = Pose()
+            # formatting for rviz visualization
+            pose_stamped_msg = PoseStamped()
+            pose_stamped_msg.header.frame_id = 'NED'
+            
+            # convert relative transform relative to body frame to Ned frame
+            trans_matrix = translation_matrix([x,y,z])
+            rot_matrix = euler_matrix(roll,pitch,yaw)    
+            transform = concatenate_matrices(trans_matrix, rot_matrix)            
+            transform = concatenate_matrices(self.get_current_pose_transform(), transform)
+
+            # convert to pose msg format
+            translation = translation_from_matrix(transform)            
+            quaternion = quaternion_from_matrix(transform)
+
+            # updating pose_msg
+            pose_msg.position.x = translation[0]
+            pose_msg.position.y = translation[1]
+            pose_msg.position.z = translation[2]
+            pose_msg.orientation.x = quaternion[0]
+            pose_msg.orientation.y = quaternion[1]
+            pose_msg.orientation.z = quaternion[2]
+            pose_msg.orientation.w = quaternion[3]
+
+            # self.last_waypoint_rel_to_current_state_visualized  = pose_msg
+            # self.last_waypoint_rel_to_current_state_visualized_transform = transform
+        
+            # formatting for rviz visualization
+            pose_stamped_msg.pose = pose_msg
+           
+
+            # self.pub1.publish(pose_stamped_msg)
+
+            # self.frames[WaypointFrame].submit_waypoint_button_1.config(state=NORMAL)
+            return pose_stamped_msg, transform
+
+
+        except ValueError as ve:
+            rospy.logerr(f"Invalid input for waypoint: {ve}")
+
+
+            # messagebox.showerror("Input Error", f"Invalid input for waypoint: {ve}")
+
+
+    def preset_pattern_visualize_waypoint_3(self,x,y,z,yaw):
+      
+        """Visualize the single waypoint relative to NED"""
+        try:
+            roll = 0
+            pitch = 0
+            # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
+
+            pose_msg = Pose()
+            # formatting for rviz visualization
+            pose_stamped_msg = PoseStamped()
+            pose_stamped_msg.header.frame_id = 'NED'
+            
+        
+            pose_msg.position.x = x
+            pose_msg.position.y = y
+            pose_msg.position.z = z
+
+            quaternion = quaternion_from_euler(roll, pitch, yaw)
+            pose_msg.orientation.x = quaternion[0]
+            pose_msg.orientation.y = quaternion[1]
+            pose_msg.orientation.z = quaternion[2]
+            pose_msg.orientation.w = quaternion[3]
+            
+
+            # formatting for rviz visualization
+            pose_stamped_msg.pose = pose_msg
+            # self.pub1.publish(pose_stamped_msg)
+
+            
+
+            # self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
+            return pose_stamped_msg
+        
+        except ValueError as ve:
+            rospy.logerr(f"Invalid input for waypoint: {ve}")
+
+                        
+
+            
+        
+            
+       
+
+  
+
+    
         
 
 # frames in main window
@@ -2235,9 +2978,13 @@ class PresetPatternsFrame(Toplevel):
         square_size_entry = Entry(self.square_pattern_frame,textvariable = square_size, width=10).grid(row=row_index, column=1,columnspan=1,padx=5, pady=5, sticky="ew")
         row_index +=1
 
-        submit_generate_square_path_button = Button(self.square_pattern_frame, text=f"Submit", command=lambda: controller.generate_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get(),orientation_options_choice2.get()))
-        submit_generate_square_path_button.grid(row = row_index, column=0, columnspan =2, padx=5, pady=5, sticky = 'ew')   
+        visualize_generate_square_path_button = Button(self.square_pattern_frame, text=f"Visualize", command=lambda: controller.visualize_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get(),orientation_options_choice2.get()))
+        visualize_generate_square_path_button.grid(row = row_index, column=0, columnspan =1, padx=5, pady=5, sticky = 'ew')   
 
+        self.submit_generate_square_path_button = Button(self.square_pattern_frame, text=f"Submit", command=lambda: controller.generate_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get(),orientation_options_choice2.get()))
+        self.submit_generate_square_path_button.grid(row = row_index, column=1, columnspan =1, padx=5, pady=5, sticky = 'ew')   
+        self.submit_generate_square_path_button.configure(state=DISABLED)
+        
         # circle pattern frame
         row_index = 0
 
@@ -2262,10 +3009,13 @@ class PresetPatternsFrame(Toplevel):
         angle = StringVar()
         angle_entry = Entry(self.circle_pattern_frame,textvariable = angle, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
         row_index +=1
-        
-        submit_generate_circle_path_button = Button(self.circle_pattern_frame, text=f"Submit", command=lambda: controller.generate_orbit(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get(), orientation_options["Smooth Transition"]))
-        submit_generate_circle_path_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')   
 
+        visualize_generate_orbit_path_button = Button(self.circle_pattern_frame, text=f"Visualize", command=lambda: controller.visualize_orbit(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get(), orientation_options["Smooth Transition"]))
+        visualize_generate_orbit_path_button.grid(row = row_index, column=0,columnspan=1, padx=5, pady=5, sticky='ew')   
+        
+        self.submit_generate_orbit_path_button = Button(self.circle_pattern_frame, text=f"Submit", command=lambda: controller.generate_orbit(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get(), orientation_options["Smooth Transition"]))
+        self.submit_generate_orbit_path_button.grid(row = row_index, column=1,columnspan=1, padx=5, pady=5, sticky='ew')   
+        self.submit_generate_orbit_path_button.configure(state=DISABLED)
 
         # Lawnmower pattern frame
         row_index = 0
@@ -2297,13 +3047,14 @@ class PresetPatternsFrame(Toplevel):
         n_legs_entry = Entry(self.lawnmower_frame,textvariable = n_legs, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
         row_index +=1
 
+        visualize_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Visualize", command=lambda: controller.visualize_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
+        visualize_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=1, padx=5, pady=5, sticky='ew')
+        # row_index+=1
 
-        submit_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Submit", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
-        submit_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')
-        row_index+=1
-        visualize_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Visualize", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
-        visualize_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')
-
+        self.submit_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Submit", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
+        self.submit_generate_lawnmower_button.grid(row = row_index, column=1,columnspan=1, padx=5, pady=5, sticky='ew')
+        self.submit_generate_lawnmower_button.configure(state=DISABLED)
+      
         # rotation direction choice
         for (text, value) in rotate_direction_options.items():
         
@@ -2326,9 +3077,13 @@ class PresetPatternsFrame(Toplevel):
         arc_angle_entry = Entry(self.arc_pattern_frame,textvariable = arc_angle, width=10).grid(row= row_index, column=1,padx=5, pady=5, sticky="ew")
         row_index +=1
         
-        submit_generate_arc_path_button = Button(self.arc_pattern_frame, text=f"Submit", command=lambda: controller.generate_arc(relative_option_button_text.get(), arc_radius.get(), arc_angle.get(), rotate_directions_button_text4.get(),orientation_options["Smooth Transition"]))
-        submit_generate_arc_path_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')   
+        visualize_generate_arc_path_button = Button(self.arc_pattern_frame, text=f"Visualize", command=lambda: controller.visualize_arc(relative_option_button_text.get(), arc_radius.get(), arc_angle.get(), rotate_directions_button_text4.get(),orientation_options["Smooth Transition"]))
+        visualize_generate_arc_path_button.grid(row = row_index, column=0,columnspan=1, padx=5, pady=5, sticky='ew')   
 
+
+        self.submit_generate_arc_path_button = Button(self.arc_pattern_frame, text=f"Submit", command=lambda: controller.generate_arc(relative_option_button_text.get(), arc_radius.get(), arc_angle.get(), rotate_directions_button_text4.get(),orientation_options["Smooth Transition"]))
+        self.submit_generate_arc_path_button.grid(row = row_index, column=1,columnspan=1, padx=5, pady=5, sticky='ew')   
+        self.submit_generate_arc_path_button.configure(state=DISABLED)
 
 
     def close(self,controller):
