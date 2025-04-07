@@ -16,7 +16,7 @@ class windows(Tk):
         Tk.__init__(self, *args, **kwargs)
         self.pub1 = rospy.Publisher('new_pose_visualization', PoseStamped, queue_size=10)
         self.pub3 = rospy.Publisher("waypoint_plot_visualization", PoseArray, queue_size=10)
-        self.pub4 = rospy.Publisher("target_waypoints_list", PoseArray, queue_size=10) # hot used yet
+        self.pub4 = rospy.Publisher("target_waypoints_list", PoseArray, queue_size=10) # not used yet
         self.pub10 = rospy.Publisher("motion_controller_state",String, queue_size=1)
         self.pub5 = rospy.Publisher("desired_robot_path", Path, queue_size=10)
         self.pub7 = rospy.Publisher("hold_pose", Bool, queue_size=1)
@@ -26,27 +26,34 @@ class windows(Tk):
         self.pub13 = rospy.Publisher("reset_waypoints", Bool, queue_size=10)
         self.pub14 = rospy.Publisher("path_generation_type", Int8MultiArray, queue_size=10)
         self.pub15 = rospy.Publisher("path_orientation_style", Int8MultiArray, queue_size=10)
-        
-        
+        self.pub16 = rospy.Publisher("visualize_preset_pattern", PoseArray, queue_size=10) # not used yet
+        self.pub17= rospy.Publisher("path_planner_parameters", Float32MultiArray, queue_size=10) # not used yet
+
         # Setting window icon
         self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
         self.iconphoto(True, self.icon)
 
-        #  Current mode of the controller
+        # Sets the current mode of the controller
+        # controller modes are Disabled, waypoint, velocity, manual pwm, Joystick
         self.current_mode = "Disabled"
 
         # Updates the text in the activate/deactivate button
         self.controller_active = False
+        # when hold pose is true when waypoint mode is initiated
+        self.hold_pose = True
+
+        # state of the popup windows
         self.open_controller_params_frame = False
         self.open_preset_patterns_frame = False
-        self.hold_pose = True
+        # need to initialize the names of the windows 
         self.controller_params_window = None
         self.preset_patterns_window = None
 
+        # initialize target depth
         self.target_depth = None
 
 
-        # Initialize variables 
+        # Initialize variables for controller gains
         self.kp_x = 0.0
         self.kd_x = 0.0
         self.ki_x = 0.0
@@ -63,49 +70,58 @@ class windows(Tk):
         self.kd_yaw = 0.0
         self.ki_yaw = 0.0
 
-        self.gains = Float32MultiArray()
-        self.gains.data =[]   
-        self.path_generation_data = Int8MultiArray()
-        self.path_generation_data.data = []
+        # the first value in data indicates what the rest of the data will be to the subscriber in motion controller
+        self.motion_controller_msgs  = Float32MultiArray() 
+        self.motion_controller_msgs.data = []   
 
+        # the first value in data indicates what the rest of the data will be to the subscriber in motion controller
+        self.path_planner_msgs  = Float32MultiArray() 
+        self.path_planner_msgs.data = []   
+    
+    
+        # we dont really need to call back the values
+        # used to set limits for safe operation
+        # self.max_linear_velocity = 0
+        # self.min_pwm = 0
+        # self.max_pwm = 0
+    
+        # used in velocity mode for velocity setpoints
+        # self.vx = 0
+        # self.vy = 0
+        # self.vz = 0
+        # self.vyaw = 0
 
-        self.max_linear_velocity = 0
-        self.min_pwm = 0
-        self.max_pwm = 0
-        self.vx = 0
-        self.vy = 0
-        self.vz = 0
-        self.vyaw = 0
-
-         # this stores the last waypoint visualized relative to the current state at the time of visualizing
+        # this stores the last waypoint visualized relative to the current state at the time of visualizing
+        #  when you add a waypoint relative to current state, you need to visualize then add it, this is a safety feature to prevent issues 
         self.last_waypoint_rel_to_current_state_visualized = Pose()
-
         self.last_waypoint_rel_to_current_state_visualized = None
+        #  this holds the transform for the last waypoint visualized
         self.last_waypoint_rel_to_current_state_visualized_transform =np.eye(4)
 
-
+        #  this is used to show the straight line path between waypoints
         self.desired_path = Path()
         self.desired_path.header.frame_id='NED'
 
-        self.goal_waypoints = PoseArray()
-        self.goal_waypoints.header.frame_id = 'NED'
-        
-        self.last_waypoint_transform = np.eye(4)
-        self.last_waypoint = Pose()
-    
 
-        self.current_pose = PoseWithCovarianceStamped()
-        self.init_pose = PoseStamped()
-        self.init_pose.header.frame_id = self.current_pose.header.frame_id
-        self.init_pose.pose= self.current_pose.pose.pose
-
-
-        # orientation style along path
+        # For each waypoint that is published the orientation style used to go between the previous waypoint and the last added waypoint is 
         self.orientation_style = Int8MultiArray()
         self.orientation_style.data = []
 
 
+        # stores a list of the target waypoints
+        self.goal_waypoints = PoseArray()
+        self.goal_waypoints.header.frame_id = 'NED'
+
+        # stores the transformation for the last waypoint 
+        self.last_waypoint_transform = np.eye(4)
+        self.last_waypoint = Pose()
     
+        # stores the current pose
+        self.current_pose = PoseWithCovarianceStamped()
+        # self.init_pose = PoseStamped()
+        # self.init_pose.header.frame_id = self.current_pose.header.frame_id
+        # self.init_pose.pose= self.current_pose.pose.pose
+   
         # Adding a title to the window
         self.wm_title("BlueROV2 Heavy Configuration Interface")
 
@@ -129,27 +145,25 @@ class windows(Tk):
         self.depth_frame.grid(row=1, column=0, padx=10,pady=10, sticky="w")
 
 
+
         #  depth info frame
         self.current_z_label = Label(self.depth_frame,text= "Current Depth:")
         self.current_z_label.configure(text=f"Current Depth: {round(self.current_pose.pose.pose.position.z,2)} m")
         self.current_z_label.grid(row=2, column=0, columnspan=3, padx=20, pady=5,sticky="w")
 
         self.target_depth_label = Label(self.depth_frame,text= "Target Depth")
-        self.target_depth_label.configure(text=f"Target Depth: Not Set")
+        self.target_depth_label.configure(text=f"Target Depth: Not Set", state = HIDDEN)
         self.target_depth_label.grid(row=3, column=0,columnspan=3, padx=20, pady=5,sticky="w")
 
 
         # depth setpoint frame
         self.depth_setpoint_frame = LabelFrame(self.depth_frame, text="Set Operating Depth")
         self.depth_setpoint_frame.grid(row = 4, column=0, columnspan=1, padx=20, pady=10, sticky="ew")
-        # row_index +=1
-
-        # set_target_depth_label = Label(self.depth_frame, text="Set Target Depth (m)")
-        # set_target_depth_label.grid(row=0, column=0, columnspan=1, padx=20, pady=5, sticky="w")
         depth = StringVar()
         depth_entry = Entry(self.depth_setpoint_frame,textvariable = depth, width=10).grid(row=4, column=0,padx=5, pady=5, sticky="w")
         self.target_depth_button = tk.Button(self.depth_setpoint_frame,text = "Submit", state=DISABLED, command=lambda: self.submit_target_depth(depth.get()))
         self.target_depth_button.grid(row=4, column=1, padx=10,pady=10, sticky="w")
+
                 
 
 
@@ -165,77 +179,100 @@ class windows(Tk):
             command=self.on_off_button_function
         )
         self.on_off_button.grid(row=0, column=0, columnspan=1, padx=20, pady=20,sticky="ew")
-
-        # We will now create a dictionary of frames
+        
+        # a dictionary of frames
         self.frames = {}
-
-        # we'll create the frames themselves later but let's add the components to the dictionary.
-        # for F in (InfoPage,WaypointFrame,ControlOptionsPage,JoystickFrame,VelocityFrame,PWMFrame,ControllerParamFrame):
         for F in (InfoPage,WaypointFrame,ControlOptionsPage,JoystickFrame,VelocityFrame,PWMFrame):
             frame = F(self.main_container, self)
 
             # the windows class acts as the root window for the frames.
-            # if not F == ControllerParamFrame:
             self.frames[F] = frame
-
-            # if not F == ControllerParamFrame:
-            #     frame.grid(row=3, column=0,padx=10,pady=10, sticky="nsew")
-
-
-
-        # need to reset after creating teh other frames
+                    
+        
+        # need to reset after creating the other frames above
         #  Current mode of the controller
         self.current_mode = "Disabled"
 
         # Updates the text in the activate/deactivate button
         self.controller_active = False
 
+        # Displaying the current mode and on off button text
         self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
         self.on_off_button.configure(text="Activate Controller")
-        
+
+        # show th info frame 
         self.show_frame(InfoPage)
 
         self.sub1 = rospy.Subscriber('/state', PoseWithCovarianceStamped, self.position_callback)
-        self.sub2 = rospy.Subscriber('/holdpoe', PoseWithCovarianceStamped, self.position_callback)
+        self.sub2 = rospy.Subscriber('/holdpose', PoseWithCovarianceStamped, self.position_callback)
 
     def open_close_preset_patterns_window(self):
-        if not self.open_preset_patterns_frame:
+        '''     
+        Check if the frame is not open:
+            Attempt to close the window and change the button text to indicate that the window can be opened. If there's nothing to close, a warning is logged.
 
+        Check if the frame is open:
+            If the window exists, try to bring it to the front.
+            If it can't be brought to the front (possibly because it was already destroyed), or if it doesn't exist, create a new instance of the window.
+        '''
+
+        # Check if the preset patterns frame is not open
+        if not self.open_preset_patterns_frame:
+            # Try to destroy/close the preset patterns window if it exists
             try:
                 self.preset_patterns_window.destroy()
-                self.frames[WaypointFrame].open_preset_patterns_button.configure(text="Open Preset Patterns")
                 
+                # Update the button text to indicate the window can be opened
+                self.frames[WaypointFrame].open_preset_patterns_button.configure(text="Open Preset Patterns")
+            
+            # Catch any exceptions, most likely that there is no window to close, usually if it was closed using the x button instead of the close window button
             except:
-                rospy.logwarn("nothing to close")
+                rospy.logwarn("No window to close")
 
+        # If the preset patterns frame is supposed to be open
         elif self.open_preset_patterns_frame:
-            if self.preset_patterns_window:# if it exists try bringing it up 
+            # Check if the window object already exists
+            if self.preset_patterns_window:
+                # Try to bring the window to the foreground
                 try:
                     self.preset_patterns_window.deiconify()
+                
+                # If deiconifying fails, create a new window instance
                 except:
-                    self.preset_patterns_window = PresetPatternsFrame(self.main_container,self)
+                    self.preset_patterns_window = PresetPatternsFrame(self.main_container, self)
             else:
-                self.preset_patterns_window = PresetPatternsFrame(self.main_container,self)
+                # If the window doesn't exist, create a new instance of the preset patterns window
+                self.preset_patterns_window = PresetPatternsFrame(self.main_container, self)
 
     def open_close_controller_params_window(self):
+        # Check if the controller parameters frame needs to be closed
         if not self.open_controller_params_frame:
-
+            # Try to destroy/close the controller parameters window if it exists
             try:
                 self.controller_params_window.destroy()
+                
+                # Update the button text in both WaypointFrame and VelocityFrames
                 self.frames[WaypointFrame].open_controller_params_button.configure(text="Edit Controller Parameters")
                 self.frames[VelocityFrame].open_controller_params_button.configure(text="Edit Controller Parameters")
 
-        # controller.open_close_controller_params_window()
+            # Catch any exceptions, likely that it was aready closed
             except:
-                rospy.logwarn("nothing to close")
+                rospy.logwarn("Nothing to close")
+
+        # If the controller parameters frame is supposed to be open
         elif self.open_controller_params_frame:
-            if self.controller_params_window:# if it exists try bringing it up 
+            # Check if the window object already exists
+            if self.controller_params_window:
+                # Try to bring the window to the foreground
                 try:
                     self.controller_params_window.deiconify()
+                
+                # If deiconifying fails, create a new window instance
                 except:
-                    self.controller_params_window = ControllerParamFrame(self.main_container,self)
+                    self.controller_params_window = ControllerParamFrame(self.main_container, self)
             else:
-                self.controller_params_window = ControllerParamFrame(self.main_container,self)
+                 # If the window doesn't exist, create a new instance of the controller parameters window
+                self.controller_params_window = ControllerParamFrame(self.main_container, self)
                 
     def show_frame(self, cont):
   
@@ -297,15 +334,13 @@ class windows(Tk):
         self.pub10.publish(self.current_mode)
 
     def position_callback(self, msg):
+        # updates the current pose and edits the depth display value
         self.current_pose = msg
         self.current_pose_transform = self.get_current_pose_transform()
         self.current_z_label.configure(text=f"Current Depth: {round(self.current_pose.pose.pose.position.z,2)} m")
 
-        # if self.current_mode =="Disabled" | (self.current_mode =="Initialized" and self.target_depth == None):
-        #     self.target_depth_label.configure(text=f"Target Depth: {round(self.current_pose.pose.pose.position.z,2)} m")
-        
     def get_current_pose_transform(self):
-        # convert current pose to transformation matrix relative in NED frame
+        # convert current pose to transformation matrix in NED frame
         trans_matrix = translation_matrix([self.current_pose.pose.pose.position.x,self.current_pose.pose.pose.position.y,self.current_pose.pose.pose.position.z])
         roll, pitch, yaw = euler_from_quaternion([self.current_pose.pose.pose.orientation.x, self.current_pose.pose.pose.orientation.y, self.current_pose.pose.pose.orientation.z, self.current_pose.pose.pose.orientation.w])
         rot_matrix = euler_matrix(roll,pitch,yaw)
@@ -313,7 +348,8 @@ class windows(Tk):
         return transform
         
     def on_off_button_function(self):
-        
+        # completely activate / deactivate the controller 
+        # updates the mode, changes button text and brings up the frame to choose which control mode to use, also allows a target depth value to be set
         if not self.controller_active:
             self.current_mode = "Initialized"
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
@@ -323,9 +359,7 @@ class windows(Tk):
             self.target_depth_button.config(state=NORMAL)
             self.target_depth = self.current_pose.pose.pose.position.z
             self.target_depth_label.configure(text=f"Target Depth: {round(self.current_pose.pose.pose.position.z,2)} m")
-            
-
-            
+                       
         elif self.controller_active:
             self.current_mode = "Disabled"
             self.current_mode_label.configure(text=f"Current Mode: {self.current_mode}")
@@ -341,8 +375,7 @@ class windows(Tk):
                 self.controller_params_window.destroy()
             
     def set_zero_velocity(self):
-        # try:
-        # indicator tells the subscriber what information is being passed 
+        
         indicator = 5
 
         # # setting velocity to zero
@@ -352,7 +385,7 @@ class windows(Tk):
         self.vyaw_setpoint = 0
         
         # preparing information to be passed
-        self.gains.data = [
+        self.motion_controller_msgs.data = [
                     indicator,
                     0,
                     0,
@@ -361,22 +394,22 @@ class windows(Tk):
                 ]
         
             
-        self.pub9.publish(self.gains)
+        self.pub9.publish(self.motion_controller_msgs)
         rospy.loginfo("Setting velocity to zero")
     
     def submit_velocity_setpoint(self,vx,vy,vz,vyaw):
-        # try:
+        # It does not warn you if the value assigned is larger than your max set value 
         # indicator tells the subscriber what information is being passed 
         indicator = 5
 
-        # # setting velocity to zero
-        self.vx_setpoint = round(self.get_float(vx),3)
-        self.vy_setpoint = round(self.get_float(vy),3)
-        self.vz_setpoint = round(self.get_float(vz),3)
-        self.vyaw_setpoint = round(self.get_float(vyaw),3)
+        # setting velocity to zero
+        self.vx_setpoint = round(self.entry_to_float(vx),3)
+        self.vy_setpoint = round(self.entry_to_float(vy),3)
+        self.vz_setpoint = round(self.entry_to_float(vz),3)
+        self.vyaw_setpoint = round(self.entry_to_float(vyaw),3)
         
         # preparing information to be passed
-        self.gains.data = [
+        self.motion_controller_msgs.data = [
                     indicator,
                     self.vx_setpoint,        
                     self.vy_setpoint,
@@ -385,27 +418,25 @@ class windows(Tk):
                 ]
         
             
-        self.pub9.publish(self.gains)
+        self.pub9.publish(self.motion_controller_msgs)
         rospy.loginfo("Setting new velocity setpoints")
     
     def submit_target_depth(self,val):
 
-    
-        # indicator tells the subscriber what information is being passed
+            # indicator tells the subscriber what information is being passed
         indicator = 6
-        self.target_depth = self.get_float(val)
+        self.target_depth = self.entry_to_float(val)
         # preparing information to be passed
-        self.gains.data = [
+        self.motion_controller_msgs.data = [
                 indicator,
                 self.target_depth
             ]
         
         # updating gui
-        # self.target_depth_label.configure(text=f"Current Depth: {round(self.current_pose.pose.pose.position.z,2)} m")
         self.target_depth_label.configure(text=f"Target Depth: {round(self.target_depth,2)} m")
 
         # publishing information
-        self.pub9.publish(self.gains)
+        self.pub9.publish(self.motion_controller_msgs)
         rospy.loginfo(f"Setting target depth to {val} m")
     
     def set_zero_pwm(self):
@@ -418,7 +449,7 @@ class windows(Tk):
         self.yaw_pwm  = 0
     
         # preparing information to be passed
-        self.gains.data = [
+        self.motion_controller_msgs.data = [
                 indicator,
                 0,
                 0,
@@ -427,7 +458,7 @@ class windows(Tk):
             ]
             
         self.target_depth_label.configure(text=f"Target Depth: Holding current depth")
-        self.pub9.publish(self.gains)
+        self.pub9.publish(self.motion_controller_msgs)
         rospy.loginfo("Setting pwm to zero")
     
     def submit_pwm_setpoint(self,x_pwm,y_pwm,z_pwm,yaw_pwm):
@@ -436,10 +467,10 @@ class windows(Tk):
         indicator = 7
 
         # setting PWM to zero
-        self.x_pwm = self.get_float(x_pwm)
-        self.y_pwm = self.get_float(y_pwm)
-        self.z_pwm = self.get_float(z_pwm)
-        self.yaw_pwm  = self.get_float(yaw_pwm)
+        self.x_pwm = self.entry_to_float(x_pwm)
+        self.y_pwm = self.entry_to_float(y_pwm)
+        self.z_pwm = self.entry_to_float(z_pwm)
+        self.yaw_pwm  = self.entry_to_float(yaw_pwm)
     
         # quick work around for the differing scale and for when z is left blank
         if self.z_pwm == 0.0:
@@ -451,9 +482,8 @@ class windows(Tk):
             self.target_depth_label.configure(text=f"Target Depth: Manually adjusting depth")
 
     
-        
         # preparing information to be passed
-        self.gains.data = [
+        self.motion_controller_msgs.data = [
                 indicator,
                 self.x_pwm,
                 self.y_pwm,
@@ -462,7 +492,7 @@ class windows(Tk):
             ]
 
     
-        self.pub9.publish(self.gains)
+        self.pub9.publish(self.motion_controller_msgs)
         rospy.loginfo("Sending PWM setpoints")
 
     def visualize_waypoint_1(self,x,y,z,yaw):
@@ -472,10 +502,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = self.get_float(x)
-            y = self.get_float(y)
-            z = self.get_float(z)
-            yaw = self.get_float(yaw)*np.pi / 180
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
 
             # update the transform for the waypoint
             trans_matrix = translation_matrix([x,y,z])
@@ -512,6 +542,9 @@ class windows(Tk):
            
 
             self.pub1.publish(pose_stamped_msg)
+
+            self.frames[WaypointFrame].submit_waypoint_button_1.config(state=NORMAL)
+
             
             
             
@@ -529,10 +562,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = self.get_float(x)
-            y = self.get_float(y)
-            z = self.get_float(z)
-            yaw = self.get_float(yaw)*np.pi / 180
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
 
             pose_msg = Pose()
             # formatting for rviz visualization
@@ -567,6 +600,10 @@ class windows(Tk):
             # formatting for rviz visualization
             pose_stamped_msg.pose = pose_msg
             self.pub1.publish(pose_stamped_msg)
+
+            self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
+
+            
             
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
@@ -578,10 +615,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = self.get_float(x)
-            y = self.get_float(y)
-            z = self.get_float(z)
-            yaw = self.get_float(yaw)*np.pi / 180
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
 
             pose_msg = Pose()
             # formatting for rviz visualization
@@ -603,6 +640,8 @@ class windows(Tk):
             # formatting for rviz visualization
             pose_stamped_msg.pose = pose_msg
             self.pub1.publish(pose_stamped_msg)
+
+            self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
             
             
         except ValueError as ve:
@@ -611,15 +650,14 @@ class windows(Tk):
     def submit_waypoint_1(self,x,y,z,yaw,path_orientation_style = 1):
         """submit the single waypoint relative to current pose"""
         try:
-            
-
+        
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = self.get_float(x)
-            y = self.get_float(y)
-            z = self.get_float(z)
-            yaw = self.get_float(yaw)*np.pi / 180
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
 
 
             # formatting for rviz visualization
@@ -655,10 +693,11 @@ class windows(Tk):
 
 
             #  adding the orientation style along the path 
-            path_orientation_style = int(self.get_float(path_orientation_style))
+            path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
                 rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
                 path_orientation_style = 4
+
 
             self.orientation_style.data.append(path_orientation_style)
             self.pub15.publish(self.orientation_style)
@@ -668,6 +707,8 @@ class windows(Tk):
             # Publishing waypoints array to the visualizer
             self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
             self.pub5.publish(self.desired_path) # shows straight line path 
+
+            self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
 
            
 
@@ -682,18 +723,18 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = self.get_float(x)
-            y = self.get_float(y)
-            z = self.get_float(z)
-            yaw = self.get_float(yaw)*np.pi / 180
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
 
 
             # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
             pose_stamped_msg.header.frame_id = 'NED'
-            self.desired_path.header.frame_id = 'NED'
+            # self.desired_path.header.frame_id = 'NED'
 
-            # convert relative transdorm to global transform
+            # convert relative transform to global transform
             trans_matrix = translation_matrix([x,y,z])
             rot_matrix = euler_matrix(roll,pitch,yaw)
             transform = concatenate_matrices(trans_matrix, rot_matrix) 
@@ -716,7 +757,6 @@ class windows(Tk):
             
             # update the last waypoint transform
             self.last_waypoint_transform = transform
-
         
             # adding the waypoint to the waypoint array
             pose_stamped_msg.pose = pose_msg
@@ -725,18 +765,19 @@ class windows(Tk):
             # publishing the singular waypoint
             self.pub12.publish(pose_stamped_msg)
 
-            # adding to path
+            # adding to path, check if this is the first waypoint in the path and add start pose if needed
             if not self.desired_path.poses:
                 start_pose = PoseStamped()
                 start_pose.header.frame_id = self.current_pose.header.frame_id
                 start_pose.pose= self.current_pose.pose.pose
                 self.desired_path.poses.append(start_pose)
     
+            #  add to the desired straight line path
             self.desired_path.poses.append(pose_stamped_msg)
 
 
             #  adding the orientation style along the path 
-            path_orientation_style = int(self.get_float(path_orientation_style))
+            path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
                 rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
                 path_orientation_style = 4
@@ -749,6 +790,8 @@ class windows(Tk):
             self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
             self.pub5.publish(self.desired_path) # shows straight line path 
 
+            self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
+
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
         
@@ -758,10 +801,10 @@ class windows(Tk):
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
-            x = self.get_float(x)
-            y = self.get_float(y)
-            z = self.get_float(z)
-            yaw = self.get_float(yaw)*np.pi / 180
+            x = self.entry_to_float(x)
+            y = self.entry_to_float(y)
+            z = self.entry_to_float(z)
+            yaw = self.entry_to_float(yaw)*np.pi / 180
           
 
             # update the transform for the waypoint
@@ -815,7 +858,7 @@ class windows(Tk):
 
 
             #  adding the orientation style along the path 
-            path_orientation_style = int(self.get_float(path_orientation_style))
+            path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
                 rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
                 path_orientation_style = 4
@@ -871,22 +914,22 @@ class windows(Tk):
             elif indicator ==2:
                 rospy.loginfo("Sending controller gains for velcoity controller")
                             
-            self.gains.data = [
+            self.motion_controller_msgs.data = [
                     indicator,
-                    self.get_float(kpx),
-                    self.get_float(kdx),
-                    self.get_float(kix),
-                    self.get_float(kpy),
-                    self.get_float(kdy),
-                    self.get_float(kiy),
-                    self.get_float(kpz),
-                    self.get_float(kdz),
-                    self.get_float(kiz),
-                    self.get_float(kpyaw),
-                    self.get_float(kdyaw),
-                    self.get_float(kiyaw),
+                    self.entry_to_float(kpx),
+                    self.entry_to_float(kdx),
+                    self.entry_to_float(kix),
+                    self.entry_to_float(kpy),
+                    self.entry_to_float(kdy),
+                    self.entry_to_float(kiy),
+                    self.entry_to_float(kpz),
+                    self.entry_to_float(kdz),
+                    self.entry_to_float(kiz),
+                    self.entry_to_float(kpyaw),
+                    self.entry_to_float(kdyaw),
+                    self.entry_to_float(kiyaw),
                 ]
-            self.pub9.publish(self.gains)
+            self.pub9.publish(self.motion_controller_msgs)
 
         except ValueError as ve:
             rospy.logerr(f"Invalid input for gains: {ve}")
@@ -896,11 +939,11 @@ class windows(Tk):
             indicator = 4
             rospy.loginfo("Setting max pwm signal")
             max_pwm  = float(pwm)
-            self.gains.data = [
+            self.motion_controller_msgs.data = [
                     indicator,
                     max_pwm
                     ]
-            self.pub9.publish(self.gains)
+            self.pub9.publish(self.motion_controller_msgs)
         except: 
             rospy.logerr("Encountered an error in submit_max_pwm")
         
@@ -909,11 +952,11 @@ class windows(Tk):
             indicator = 3
             rospy.loginfo("Seting max linear velocity")
             # max_linear_velocity  = float(velocity)
-            self.gains.data = [
+            self.motion_controller_msgs.data = [
                     indicator,
                     float(velocity)
                     ]
-            self.pub9.publish(self.gains)
+            self.pub9.publish(self.motion_controller_msgs)
         except:
             rospy.logerr("Encountered an error in submit_max_linear_velocity")
             
@@ -922,19 +965,26 @@ class windows(Tk):
             indicator = 9
             rospy.loginfo("Seting max angular velocity")
             # self.max_angular_velocity  = float(velocity)
-            self.gains.data = [
+            self.motion_controller_msgs.data = [
                     indicator,
                     float(velocity)
                     ]
-            self.pub9.publish(self.gains)
+            self.pub9.publish(self.motion_controller_msgs)
         except:
             rospy.logerr("Encountered an error in submit_max_angular_velocity")
      
-    def get_float(self,var):
+    def entry_to_float(self,var):
         try:
             var = float(var)
         except:
             var = 0.0
+        return var 
+    
+    def entry_to_int(self,var):
+        try:
+            var = int(var)
+        except:
+            var = 0
         return var 
 
     def visualize_path(self, path_indicator, orientation_indicator):
@@ -944,7 +994,7 @@ class windows(Tk):
         rospy.loginfo("Requesting path visualization")
             
     def generate_square(self, relative_indicator, size, rotate_direction, path_orientation_style):
-        size = self.get_float(size)
+        size = self.entry_to_float(size)
         if size == 0: 
             rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
             size = 1 
@@ -976,8 +1026,8 @@ class windows(Tk):
         self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
     
     def generate_orbit(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
-        radius = self.get_float(radius)
-        rotation_angle= self.get_float(rotation_angle)*np.pi/180
+        radius = self.entry_to_float(radius)
+        rotation_angle= self.entry_to_float(rotation_angle)*np.pi/180
 
         if radius == 0: 
             rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
@@ -1084,8 +1134,8 @@ class windows(Tk):
     
     
     def generate_arc(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
-        radius = self.get_float(radius)
-        rotation_angle= self.get_float(rotation_angle)*np.pi/180
+        radius = self.entry_to_float(radius)
+        rotation_angle= self.entry_to_float(rotation_angle)*np.pi/180
 
         if radius == 0: 
             rospy.logwarn("Cannot create circle of radius 0, defaulting to 1 m ")
@@ -1200,25 +1250,23 @@ class windows(Tk):
 
         # self.submit_waypoint_3(new_x, new_y, z, yaw)     
     
-    
     def generate_lawnmower(self, relative_indicator, leg_length, leg_spacing, n_legs, rotate_direction, path_orientation_style):
-        leg_length = self.get_float(leg_length)
-        leg_spacing = self.get_float(leg_spacing)
-        n_legs = self.get_float(n_legs)    
+       
+        leg_length = self.entry_to_float(leg_length)
+        leg_spacing = self.entry_to_float(leg_spacing)
+        n_legs = self.entry_to_int(n_legs)
 
         if leg_length == 0: 
-            rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
-            size = 1 
+            rospy.logwarn("Cannot create leg length of size 0, defaulting to 1 m ")
+            leg_length = 1 
 
-        if relative_indicator == "1":
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
-        elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0, path_orientation_style)
-        elif relative_indicator =="":
-            rospy.logwarn("start point not selected, defaulting to current pose")
-            self.visualize_waypoint_1(0,0,0,0)
-            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+        if leg_spacing == 0:
+            rospy.logwarn("Cannot create leg spacing of size 1, defaulting to 1 m ")
+            leg_spacing  = 1 
+
+        if n_legs == 0:
+            rospy.logwarn("Cannot create 0 legs, defaulting to 1 leg ")
+            n_legs = 1
 
         if rotate_direction == "1":
             rotate = 90
@@ -1227,22 +1275,105 @@ class windows(Tk):
         elif rotate_direction =="":
             rospy.logwarn("rotation direction not selected, defaulting to cw")
             rotate = 90 
+        
+  
 
-        i = 1
+        if relative_indicator == "1":
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+            
+        elif relative_indicator =="2":
+            # self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
 
-        self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
-        while i < n_legs:
+        elif relative_indicator =="":
+            rospy.logwarn("start point not selected, defaulting to current pose")
+            self.visualize_waypoint_1(0,0,0,0)
+            self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+
+        # self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+
+    
+
+        # # new method
+        # if relative_indicator == "1":
+        #     # self.visualize_waypoint_1(leg_length,0,0,rotate)
+        #     # self.submit_waypoint_1(leg_length,0,0,rotate, path_orientation_style)
+
+        #     self.visualize_waypoint_1(0,0,0,0)
+        #     self.submit_waypoint_1(0,0,0,0, path_orientation_style)
+        #     self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+            
+        # elif relative_indicator =="2":
+        #     self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+        # elif relative_indicator =="":
+        #     rospy.logwarn("start point not selected, defaulting to current pose")
+        #     self.visualize_waypoint_1(leg_length,0,0,rotate)
+        #     self.submit_waypoint_1(leg_length,0,0,rotate, path_orientation_style)
+
+       
+
+        for i in range(1,n_legs):
             self.submit_waypoint_2(leg_spacing,0,0,rotate, path_orientation_style)
             if i == n_legs-1:
                 rotate = 0
             else:
                 rotate *=-1
             self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
-            i +=1
+        
+    def submit_pos_threshold(self, threshold):
+        try:
+            indicator = 1
+            rospy.loginfo("Setting position threshold")
+            threshold = self.entry_to_float(threshold)
 
-        # self.submit_waypoint_2(size,0,0,rotate)
-        # self.submit_waypoint_2(size,0,0,rotate)
-   
+            self.path_planner_msgs.data = [
+                    indicator,
+                    threshold
+                    ]
+            self.pub17.publish(self.path_planner_msgs)
+
+        except: 
+            rospy.logerr("Encountered an error in submit_pos_threshold")
+    
+    def submit_orientation_threshold(self, threshold):
+        try:
+            indicator = 2
+            rospy.loginfo("Setting orientation threshold")
+            threshold = self.entry_to_float(threshold)
+
+            self.path_planner_msgs.data = [
+                    indicator,
+                    threshold
+                    ]
+            
+            self.pub17.publish(self.path_planner_msgs)
+            
+        except: 
+            rospy.logerr("Encountered an error in submit_orientation_threshold")
+    
+    def submit_lookahead_distance(self, distance):
+        try:
+            indicator = 3
+            rospy.loginfo("Setting lookahead distance")
+            distance= self.entry_to_float(distance)
+
+            self.path_planner_msgs.data = [
+                    indicator,
+                    distance
+                    ]
+            
+            self.pub17.publish(self.path_planner_msgs)
+            
+        except: 
+            rospy.logerr("Encountered an error in submit_lookahead_distance")
+        
+        
+        
+        
+
 # frames in main window
 class InfoPage(LabelFrame):
     def __init__(self, parent, controller):
@@ -1464,9 +1595,7 @@ class PWMFrame(LabelFrame):
 class WaypointFrame(LabelFrame):
     def __init__(self, parent, controller):
         LabelFrame.__init__(self, parent, text = "Waypoint Mode")
-        # self.path_type_indicator = 1
-        # self.orientation_type_indicator = 1
-
+        
         # get orientation to use along path 
 
         orientation_options = {"Translate Rotate" : 1,
@@ -1474,10 +1603,11 @@ class WaypointFrame(LabelFrame):
                                 "Smooth Transition" : 3,
                                 "RTR" : 4
                             }
-        
+        # variable to hold orientation choice
         orientation_options_choice = StringVar()
 
 
+        # frames 
         row_index =0
         
         self.close_waypoint_mode_button = Button(self, text="Disable Waypoint Mode", command=lambda: controller.show_frame(ControlOptionsPage))
@@ -1487,12 +1617,7 @@ class WaypointFrame(LabelFrame):
         self.orientation_options_frame = LabelFrame(self, text="Orientation Along Path")
         self.orientation_options_frame.grid(row = row_index, column=1, rowspan=6, columnspan=1, padx=20, pady=10, sticky="nw")
         row_index +=1
-       
-
-        # # Path Generation Frame
-        # self.path_generation_frame = LabelFrame(self, text="Path Generation")
-        # self.path_generation_frame.grid(row = row_index, column=1, rowspan=6, columnspan=3, padx=20, pady=10, sticky="new")
-        # row_index +=1
+     
        
         self.hold_pose_button = Button(self, text="Follow Path", command=lambda: self.hold_pose_button_function(controller))
         # var_text = StringVar()
@@ -1503,17 +1628,6 @@ class WaypointFrame(LabelFrame):
         
         self.hold_pose_button.grid(row= row_index, column=0, rowspan=1, columnspan=1, sticky="ew", padx=20, pady=5)
         row_index+=1
-        # self.hold_pose_button = Button(self, text="Follow Path", command=lambda: self.hold_pose_button_function(controller))
-        # self.hold_pose_button.grid(row= row_index, column=0, columnspan=1, sticky="ew", padx=20, pady=5)
-      
-        # self.open_controller_params_button = Button(self, text=f"Edit Controller Parameters", command=lambda: controller.open_controller_params_button_function(controller))
-        # self.open_controller_params_button.grid(row= row_index, column=1, columnspan=1, sticky="ew", padx=20, pady=2)
-    
-        # self.other_button = Button(self, text="Follow Path", command=lambda: controller.hold_pose_button_function())
-        # self.other_button.grid(row= row_index, column=2, columnspan=1, sticky="ew", padx=20, pady=2)
-        
-        
-    
          
         self.erase_waypoints_button = Button(self, text="Erase all waypoints", command=lambda: self.erase_waypoints(controller))
         self.erase_waypoints_button.grid(row= row_index, column=0, rowspan=1, columnspan=1, sticky="ew", padx=20, pady=5)
@@ -1550,6 +1664,7 @@ class WaypointFrame(LabelFrame):
         self.add_waypoints_frame_3 = LabelFrame(self.add_waypoints_frame, text="Add a waypoint relative to \nNED frame")
         self.add_waypoints_frame_3.grid(row = row_index, column=2, columnspan=1, padx=20, pady=10, sticky="ew")
        
+        # ready for gps if needed
         '''
         # add waypoints frame 4
         self.add_waypoints_frame_4 = LabelFrame(self.add_waypoints_frame, text="Add a GPS waypoint")
@@ -1582,10 +1697,14 @@ class WaypointFrame(LabelFrame):
         yaw1_entry = Entry(self.add_waypoints_frame_1,textvariable = yaw1, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
         row_index +=1
     
-        visualize_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Visualize", command=lambda: controller.visualize_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get()))
-        visualize_waypoint_button_1 .grid(row = row_index, column=0,padx=5, pady=5)  
-        submit_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Submit", command=lambda: controller.submit_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get(), orientation_options_choice.get()))
-        submit_waypoint_button_1 .grid(row = row_index, column=1,padx=5, pady=5)   
+        self.visualize_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Visualize", command=lambda: controller.visualize_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get()))
+        self.visualize_waypoint_button_1 .grid(row = row_index, column=0,padx=5, pady=5)  
+        self.submit_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Submit", command=lambda: controller.submit_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get(), orientation_options_choice.get()))
+        self.submit_waypoint_button_1 .grid(row = row_index, column=1,padx=5, pady=5) 
+        self.submit_waypoint_button_1.config(state=DISABLED)
+
+            
+              
 
 
 
@@ -1655,99 +1774,14 @@ class WaypointFrame(LabelFrame):
 
 
 
-
         # get orientation to use along path 
 
         for (text, value) in orientation_options.items():
         
             orientation_options_button= tk.Radiobutton(self.orientation_options_frame, text = text, variable =  orientation_options_choice, 
                         value = value, indicatoron=0, padx=10,pady=5)
-            # orientation_options_button.grid(row = value, column = 0, padx=5, pady=5,columnspan =2,sticky='ew')
             orientation_options_button.grid(row = value-1, column = 0, padx=10, pady=5, columnspan =1, sticky='ew')
 
-        
-
-
-        '''
-        row_index = 0
-        # waypoint relative to GPS
-        x_label_4 = Label(self.add_waypoints_frame_4, text="X:")
-        x_label_4.grid(row=row_index, column=0, padx=5, pady=5)
-        x4 = StringVar()
-        x4_entry  = Entry(self.add_waypoints_frame_4,textvariable = x4, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
-        row_index +=1
-
-        y_label_4 = Label(self.add_waypoints_frame_4, text="Y:")
-        y_label_4.grid(row=row_index, column=0, padx=5, pady=5)
-        y4 = StringVar()
-        y4_entry = Entry(self.add_waypoints_frame_4,textvariable = y4, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
-        row_index +=1
-
-        z_label_4 = Label(self.add_waypoints_frame_4, text="Z:")
-        z_label_4.grid(row=row_index, column=0, padx=5, pady=5)
-        z4 = StringVar()
-        z4_entry = Entry(self.add_waypoints_frame_4,textvariable = z4, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
-        row_index +=1
-
-        yaw_label_4 = Label(self.add_waypoints_frame_4, text="yaw (deg):")
-        yaw_label_4.grid(row=row_index, column=0, padx=5, pady=5)
-        yaw4 = StringVar()
-        yaw4_entry = Entry(self.add_waypoints_frame_4,textvariable = yaw4, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
-        row_index +=1
-    
-        visualize_waypoint_button_4 = Button(self.add_waypoints_frame_4, text=f"Visualize", command=lambda: controller.visualize_waypoint_4(x4.get(),y4.get(),z4.get(),yaw4.get()))
-        visualize_waypoint_button_4 .grid(row = row_index, column=0,padx=5, pady=5)  
-        submit_waypoint_button_4 = Button(self.add_waypoints_frame_4, text=f"Submit", command=lambda: controller.submit_waypoint_4(x4.get(),y4.get(),z4.get(),yaw4.get()))
-        submit_waypoint_button_4 .grid(row = row_index, column=1,padx=5, pady=5)   
-
-        '''
-    
-        '''
-        # path generation frame
-        path_options = {"Straight Line" : 1,
-                "Sine Wave" :  2,
-                "Arc" :  3}
-        
-        orientation_options = {"Static" : 1,
-                "Facing Next" :  2,
-                "Orbit" :  3
-                }
-        
-        relative_options = {"current pose" : 1,
-                        "last waypoint" :  2,
-                        }
-        
-        
-        path_option_button_text = StringVar()
-        orientation_option_button_text = StringVar()
-        relative_option_button_text = StringVar()
-    
-        # create radio buttons for path generation option
-        for (text, value) in path_options.items():
-        
-            path_type_button = tk.Radiobutton(self.path_generation_frame, text = text, variable = path_option_button_text, 
-                        value = value, indicatoron=0, padx=5,pady=5,  command=lambda: self.path_generation_button(path_option_button_text.get()))
-        
-            # row_index = value+1
-            path_type_button.grid(row = value-1, column=0,padx=5, pady=5, sticky="w")
-
-        # create radio buttons for orientation options
-        for (text, value) in orientation_options.items():
-        
-            orientation_type_button = tk.Radiobutton(self.path_generation_frame, text = text, variable = orientation_option_button_text, 
-                        value = value, indicatoron=0, padx=5,pady=5, command=lambda: self.orientation_generation_button(orientation_option_button_text.get()))
-        
-            # row_index = value+1
-            orientation_type_button.grid(row = value-1, column=1, padx=5, pady=5, sticky="w")
-
-        # visualize_path_button= Button(self.path_generation_frame, text=f"Visualize Path", command=lambda: self.visualize_path(path_option_button_text.get(), orientation_option_button_text.get()))
-        visualize_path_button= Button(self.path_generation_frame, text=f"Visualize Path", command=lambda: controller.visualize_path(path_option_button_text.get(), orientation_option_button_text.get()))
-        visualize_path_button.grid(row = 0, column=2,padx=5, pady=5, sticky='w')  
-
-        submit_path_button = Button(self.path_generation_frame, text=f"Submit", command=lambda: controller.visualize_path(path_option_button_text.get(), orientation_option_button_text.get()))
-        submit_path_button.grid(row = 1, column=2,padx=5, pady=5, sticky='w')  
-        
-       '''
 
     def path_generation_button(self, indicator):
         # self.path_type_indicator = indicator
@@ -1831,6 +1865,12 @@ class ControllerParamFrame(Toplevel):
         # Saturation Parameters
         self.saturation_params = LabelFrame(self, text="Saturation Parameters")
         self.saturation_params.grid(row = row_index, column=0, columnspan=2, padx = 20, pady=20, sticky="ew")
+        row_index +=1
+
+
+        # Saturation Parameters
+        self.path_following_params_frame = LabelFrame(self, text="Path Following Parameters")
+        self.path_following_params_frame.grid(row = row_index, column=0, columnspan=2, padx = 20, pady=20, sticky="ew")
        
         row_index +=1
         
@@ -2032,6 +2072,34 @@ class ControllerParamFrame(Toplevel):
         self.submit_x_y_pwm_button = Button(self.saturation_params, text=f"Submit", command=lambda: controller.submit_max_pwm(max_pwm.get()))
         self.submit_x_y_pwm_button.grid(row= row_index, column=2, padx=5, pady=10)
         row_index +=1       
+
+        #  Path following Params
+        row_index = 0
+
+        # position Threshold
+        label = Label(self.path_following_params_frame, text=f"Position Threshold (m)")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+        pos_threshold = StringVar()
+        pos_threshold_entry = Entry(self.path_following_params_frame, textvariable = pos_threshold, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        submit_pos_threshold_button = Button(self.path_following_params_frame, text=f"Submit", command=lambda: controller.submit_pos_threshold(pos_threshold.get()))
+        submit_pos_threshold_button.grid(row= row_index, column=2,  padx=5, pady=10)
+        row_index +=1
+
+        label = Label(self.path_following_params_frame, text=f"Orientation Threshold (deg)")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+        orientation_threshold = StringVar()
+        orientation_threshold_entry = Entry(self.path_following_params_frame, textvariable = orientation_threshold, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        submit_orientation_threshold_button = Button(self.path_following_params_frame, text=f"Submit", command=lambda: controller.submit_orientation_threshold(orientation_threshold.get()))
+        submit_orientation_threshold_button.grid(row= row_index, column=2,  padx=5, pady=10)
+        row_index +=1
+
+        label = Label(self.path_following_params_frame, text=f"Lookahead Distance (m)")
+        label.grid(row=row_index, column=0,columnspan=1, padx=5, pady=5)
+        lookahead_distance = StringVar()
+        lookahead_distance_entry = Entry(self.path_following_params_frame, textvariable = lookahead_distance, width=10).grid(row=row_index, column=1,padx=5, pady=5, sticky="ew")
+        submit_lookahead_distance_button = Button(self.path_following_params_frame, text=f"Submit", command=lambda: controller.submit_lookahead_distance(lookahead_distance.get()))
+        submit_lookahead_distance_button.grid(row= row_index, column=2,  padx=5, pady=10)
+        row_index +=1
   
 
 
@@ -2232,7 +2300,9 @@ class PresetPatternsFrame(Toplevel):
 
         submit_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Submit", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
         submit_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')
-
+        row_index+=1
+        visualize_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Visualize", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
+        visualize_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=2, padx=5, pady=5, sticky='ew')
 
         # rotation direction choice
         for (text, value) in rotate_direction_options.items():
