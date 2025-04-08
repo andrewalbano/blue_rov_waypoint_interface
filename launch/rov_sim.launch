@@ -18,13 +18,14 @@
      <!-- Static transform from mad to ned -->
     <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>  
  
-    <!-- Launch rviz -->
+    <!-- Launch rviz -->s
     <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz.rviz" /> -->
 
    
     <!-- Publish robot description -->
-    <param name="blue_rov_description" command="$(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro'" />
-    <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" /> -->
+    <!-- <param name="blue_rov_description" command="$(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro'" /> -->
+    <param name="robot_description" command="$(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro'" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
 
     
      <!-- Launch rviz -->
@@ -32,4 +33,5 @@
 
  
 </launch>  
+
 

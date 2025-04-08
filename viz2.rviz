@@ -4,10 +4,10 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Axes1
+        - /Status1
         - /Map1/Position1
-      Splitter Ratio: 0.4993757903575897
-    Tree Height: 606
+      Splitter Ratio: 0.720588207244873
+    Tree Height: 1138
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -48,7 +48,7 @@ Panels:
     topic_3_thickness: 1
     topic_3_type: std_msgs/Float32
     w_time: 10
-    window_time_enable: false
+    window_time_enable: true
     y_max: 10
     y_min: 0
     yaxis_rescale_auto: true
@@ -102,6 +102,24 @@ Panels:
     y_max: 10
     y_min: 0
     yaxis_rescale_auto: true
+  - Class: graph_rviz_plugin/Line graph
+    Name: Line graph
+    export_directory: ""
+    legend_enable: true
+    refresh_freq: 40
+    topic_0_color: 0
+    topic_0_name: /v_magnitude
+    topic_0_thickness: 1
+    topic_0_type: std_msgs/Float32
+    topic_1_color: 1
+    topic_1_name: /v_magnitude_setpoint
+    topic_1_thickness: 1
+    topic_1_type: std_msgs/Float32
+    w_time: 1
+    window_time_enable: false
+    y_max: 10
+    y_min: 0
+    yaxis_rescale_auto: true
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -128,98 +146,6 @@ Visualization Manager:
       Reference Frame: map
       Value: true
     - Alpha: 1
-      Class: rviz/Axes
-      Enabled: false
-      Length: 1
-      Name: Axes
-      Radius: 0.05000000074505806
-      Reference Frame: map
-      Show Trail: false
-      Value: false
-    - Alpha: 1
-      Class: rviz/Axes
-      Enabled: true
-      Length: 0.800000011920929
-      Name: Axes
-      Radius: 0.15000000596046448
-      Reference Frame: NED
-      Show Trail: false
-      Value: true
-    - Alpha: 1
-      Class: rviz/Axes
-      Enabled: true
-      Length: 0.699999988079071
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: base_link
-      Show Trail: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 46; 52; 54
-      Enabled: true
-      Head Length: 0.20000000298023224
-      Head Radius: 0.15000000596046448
-      Name: "Last Waypoint Visualized "
-      Queue Size: 10
-      Shaft Length: 0.800000011920929
-      Shaft Radius: 0.07999999821186066
-      Shape: Arrow
-      Topic: /new_pose_visualization
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Arrow Length: 0.30000001192092896
-      Axes Length: 0.20000000298023224
-      Axes Radius: 0.05000000074505806
-      Class: rviz/PoseArray
-      Color: 245; 121; 0
-      Enabled: true
-      Head Length: 0.20999999344348907
-      Head Radius: 0.1599999964237213
-      Name: Goal Waypoints
-      Queue Size: 10
-      Shaft Length: 0.800000011920929
-      Shaft Radius: 0.09000000357627869
-      Shape: Arrow (3D)
-      Topic: /waypoint_plot_visualization
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 255; 0; 243
-      Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.15000000596046448
-      Name: current goal waypoint
-      Queue Size: 10
-      Shaft Length: 1
-      Shaft Radius: 0.09000000357627869
-      Shape: Arrow
-      Topic: /current_goal_waypoint
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 117; 80; 123
-      Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.15000000596046448
-      Name: lookahead waypoint
-      Queue Size: 10
-      Shaft Length: 1
-      Shaft Radius: 0.09000000357627869
-      Shape: Arrow
-      Topic: /lookahead_waypoint
-      Unreliable: false
-      Value: true
-    - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -239,6 +165,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
         dvl_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        imu_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -316,6 +246,115 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
+    - Alpha: 1
+      Class: rviz/Axes
+      Enabled: false
+      Length: 1
+      Name: Axes
+      Radius: 0.05000000074505806
+      Reference Frame: map
+      Show Trail: false
+      Value: false
+    - Alpha: 1
+      Class: rviz/Axes
+      Enabled: true
+      Length: 0.5
+      Name: Axes
+      Radius: 0.05000000074505806
+      Reference Frame: NED
+      Show Trail: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/Axes
+      Enabled: false
+      Length: 0.5
+      Name: Axes
+      Radius: 0.05000000074505806
+      Reference Frame: base_link
+      Show Trail: false
+      Value: false
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 46; 52; 54
+      Enabled: true
+      Head Length: 0.10000000149011612
+      Head Radius: 0.10000000149011612
+      Name: "Last Waypoint Visualized "
+      Queue Size: 10
+      Shaft Length: 0.5
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow
+      Topic: /new_pose_visualization
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 1
+      Axes Length: 0.20000000298023224
+      Axes Radius: 0.05000000074505806
+      Class: rviz/PoseArray
+      Color: 143; 89; 2
+      Enabled: true
+      Head Length: 0.10000000149011612
+      Head Radius: 0.10000000149011612
+      Name: Goal Waypoints
+      Queue Size: 10
+      Shaft Length: 0.5
+      Shaft Radius: 0.05000000074505806
+      Shape: Arrow (3D)
+      Topic: /waypoint_plot_visualization
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 0; 243
+      Enabled: true
+      Head Length: 0.10999999940395355
+      Head Radius: 0.10999999940395355
+      Name: current goal waypoint
+      Queue Size: 10
+      Shaft Length: 0.5
+      Shaft Radius: 0.05999999865889549
+      Shape: Arrow
+      Topic: /current_goal_waypoint
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Axes Length: 1
+      Axes Radius: 0.10000000149011612
+      Class: rviz/Pose
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.10999999940395355
+      Head Radius: 0.10999999940395355
+      Name: lookahead waypoint
+      Queue Size: 10
+      Shaft Length: 0.30000001192092896
+      Shaft Radius: 0.05999999865889549
+      Shape: Arrow
+      Topic: /lookahead_waypoint
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.25
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 46; 52; 54
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: Preset Pattern Waypoints
+      Queue Size: 10
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /visualize_preset_pattern
+      Unreliable: false
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -405,23 +444,6 @@ Visualization Manager:
       Unreliable: false
       Use Timestamp: false
       Value: false
-    - Alpha: 1
-      Arrow Length: 1
-      Axes Length: 0.30000001192092896
-      Axes Radius: 0.009999999776482582
-      Class: rviz/PoseArray
-      Color: 46; 52; 54
-      Enabled: true
-      Head Length: 0.07000000029802322
-      Head Radius: 0.029999999329447746
-      Name: PoseArray
-      Queue Size: 10
-      Shaft Length: 0.23000000417232513
-      Shaft Radius: 0.009999999776482582
-      Shape: Arrow (Flat)
-      Topic: /visualize_preset_pattern
-      Unreliable: false
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 211; 215; 207
@@ -450,7 +472,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.2316994667053223
+      Distance: 18.545459747314453
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -458,27 +480,27 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: -0.38094890117645264
+        Y: -0.04986896738409996
+        Z: -0.25025320053100586
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3097965717315674
+      Pitch: 0.8997958898544312
       Target Frame: base_link
-      Yaw: 0.5503951907157898
+      Yaw: 0.940395176410675
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1367
+  Height: 1289
   Hide Left Dock: false
   Hide Right Dock: false
   Line graph:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001c6000004fdfc020000000cfb0000001200530065006c0065006300740069006f006e000000003d0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000029b000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb00000014004c0069006e006500200067007200610070006801000002de000001290000007900fffffffb00000014004c0069006e0065002000670072006100700068000000015c0000021b0000007900fffffffb00000014004c0069006e006500200067007200610070006800000002c3000000d80000007900fffffffb00000014004c0069006e0065002000670072006100700068010000040d0000012d0000007900ffffff0000000100000100000004fdfc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d000004fd000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b00000003efc0100000002fb0000000800540069006d00650000000000000004b00000041800fffffffb0000000800540069006d006501000000000000045000000000000000000000062e000004fd00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000400000000000001c6000004affc0200000009fb0000001200530065006c0065006300740069006f006e000000003d0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000004af000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d0061006700650000000462000000d8000000000000000000000001000001c6000004affc0200000005fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb00000014004c0069006e0065002000670072006100700068010000003d000002a60000007900fffffffc0000025b000000f40000000000fffffffaffffffff0100000004fb00000014004c0069006e00650020006700720061007000680000000000ffffffff000001c600fffffffb00000014004c0069006e00650020006700720061007000680000000000ffffffff000001c600fffffffb00000014004c0069006e00650020006700720061007000680000000000ffffffff000001c600fffffffb00000014004c0069006e0065002000670072006100700068000000073a000001c6000001c600fffffffb0000000a0056006900650077007301000002e900000203000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004b00000003efc0100000002fb0000000800540069006d00650000000000000004b00000041800fffffffb0000000800540069006d0065010000000000000450000000000000000000000568000004af00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:

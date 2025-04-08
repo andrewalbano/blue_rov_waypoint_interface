@@ -89,7 +89,7 @@
     <visual>
       <origin xyz="0 0 0.07" rpy="-3.141592653589793 3.141592653589793 1.5707963267948966" />
       <geometry>
-        <mesh filename="package://bluerov_state_estimation/bluerov_model/BlueRov2.dae" />
+        <mesh filename="package://blue_rov_waypoint_interface/bluerov_model/BlueRov2.dae" />
       </geometry>
     </visual>
     <inertial>
@@ -177,11 +177,19 @@
     </sensor>
   </gazebo>
 
-  <!-- IMU -->
+  <!-- IMU
   <link name="imu_link"></link>
   <joint name="imu_joint" type="fixed">
     <parent link="imu_link" />
     <child link="base_link" />
+    <origin rpy="0 0 0" xyz="0 0 0" />
+  </joint> -->
+
+   <!-- IMU -->
+  <link name="imu_link"></link>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link" />
+    <child link="imu_link" />
     <origin rpy="0 0 0" xyz="0 0 0" />
   </joint>
 
