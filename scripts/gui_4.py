@@ -11,7 +11,7 @@ from tkinter.ttk import *
 from std_msgs.msg import Bool,Int8,Float32MultiArray, String, Int8MultiArray, MultiArrayDimension
 from nav_msgs.msg import Path
 import utm
-import dubins
+# import dubins
 
 # need to find a way to get the initial coordinates that the ned frame is located at
 
