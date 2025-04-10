@@ -872,11 +872,11 @@ class windows(Tk):
 
             
 
-            configs = self.dubin(self.desired_path.poses[-1], pose_stamped_msg)
+            # configs = self.dubin(self.desired_path.poses[-1], pose_stamped_msg)
             
     
             #  add to the desired straight line path
-            # self.desired_path.poses.append(pose_stamped_msg)
+            self.desired_path.poses.append(pose_stamped_msg)
 
 
             #  adding the orientation style along the path 
