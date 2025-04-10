@@ -8,9 +8,10 @@ import tkinter as tk
 from tkinter import *
 import tkinter.ttk as ttk
 from tkinter.ttk import *
-from std_msgs.msg import Bool,Int8,Float32MultiArray, String, Int8MultiArray
+from std_msgs.msg import Bool,Int8,Float32MultiArray, String, Int8MultiArray, MultiArrayDimension
 from nav_msgs.msg import Path
 import utm
+import dubins
 
 # need to find a way to get the initial coordinates that the ned frame is located at
 
@@ -127,6 +128,7 @@ class windows(Tk):
 
         # For each waypoint that is published the orientation style used to go between the previous waypoint and the last added waypoint is 
         self.orientation_style = Int8MultiArray()
+        self.orientation_style.layout.dim=[]
         self.orientation_style.data = []
 
 
@@ -567,21 +569,7 @@ class windows(Tk):
 
 
             self.frames[WaypointFrame].submit_waypoint_button_1.config(state=NORMAL)
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
-            
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
-
-
-            
-            
-            
+        
 
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
@@ -636,18 +624,6 @@ class windows(Tk):
             self.pub1.publish(pose_stamped_msg)
 
             self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
-
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
-            
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
-
             
             
         except ValueError as ve:
@@ -688,17 +664,6 @@ class windows(Tk):
 
             self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
 
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
-            
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
-            
             
             
         except ValueError as ve:
@@ -751,24 +716,14 @@ class windows(Tk):
 
             self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
 
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
-            
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
-            
-            
+     
             
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
 
-    def submit_waypoint_1(self,x,y,z,yaw,path_orientation_style = 1):
+    def submit_waypoint_1(self,x,y,z,yaw,path_orientation_style = 1,alg =2):
         """submit the single waypoint relative to current pose"""
+        
         try:
         
             roll = 0
@@ -815,12 +770,21 @@ class windows(Tk):
             #  adding the orientation style along the path 
             path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
-                rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
+                rospy.logwarn("No orientation style specified along the path, defaulting to RTR")
                 path_orientation_style = 4
+            
+            alg = self.entry_to_int(alg)
+            if alg == 0:
+                rospy.logwarn("No algorithm preference specified defaulting to alg 2")
+                alg = 2
 
-
+            # self.orientation_style.layout.dim.append(MultiArrayDimension())
+            # self.orientation_style.data.append([path_orientation_style,alg])
             self.orientation_style.data.append(path_orientation_style)
+            self.orientation_style.data.append(alg)
             self.pub15.publish(self.orientation_style)
+
+            # rospy.loginfo(self.orientation_style)
 
             
 
@@ -829,29 +793,30 @@ class windows(Tk):
             self.pub5.publish(self.desired_path) # shows straight line path 
 
             self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
-
-            # buttons are disabled until the next pattern is visualized
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
             
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
+            if not self.preset_patterns_window == None:
+                self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+                
+                # erase thevisualization and publish the empty arrays
+                self.preset_pattern.poses.clear()
+                self.preset_pattern_path.poses.clear()
+                self.pub16.publish(self.preset_pattern)
+                self.pub18.publish(self.preset_pattern_path)
+         
 
-           
-
-
+        
 
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
         
-    def submit_waypoint_2(self,x,y,z,yaw,path_orientation_style = 1):
+    def submit_waypoint_2(self,x,y,z,yaw,path_orientation_style = 1, alg = 2):
         """submit the single waypoint relative to last waypoint"""
         try:
+
+            
             roll = 0
             pitch = 0
             # yaw = float(getattr(self, f"yaw{suffix}_entry").get())*(np.pi / 180)
@@ -903,9 +868,15 @@ class windows(Tk):
                 start_pose.header.frame_id = self.current_pose.header.frame_id
                 start_pose.pose= self.current_pose.pose.pose
                 self.desired_path.poses.append(start_pose)
+
+
+            
+
+            configs = self.dubin(self.desired_path.poses[-1], pose_stamped_msg)
+            
     
             #  add to the desired straight line path
-            self.desired_path.poses.append(pose_stamped_msg)
+            # self.desired_path.poses.append(pose_stamped_msg)
 
 
             #  adding the orientation style along the path 
@@ -914,7 +885,17 @@ class windows(Tk):
                 rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
                 path_orientation_style = 4
 
+            alg = self.entry_to_int(alg)
+            if alg == 0:
+                rospy.logwarn("No algorithm preference specified defaulting to alg 2")
+                alg = 2
+
+            # self.orientation_style.layout.dim.append(MultiArrayDimension())
+            # self.orientation_style.data.append([path_orientation_style,int(alg)])
             self.orientation_style.data.append(path_orientation_style)
+            self.orientation_style.data.append(alg)
+
+            # self.orientation_style.data.append(path_orientation_style)
             self.pub15.publish(self.orientation_style)
 
         
@@ -924,21 +905,24 @@ class windows(Tk):
 
             self.frames[WaypointFrame].submit_waypoint_button_1.config(state=DISABLED)
 
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+            if not self.preset_patterns_window == None:
+                self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+                
+                # erase thevisualization and publish the empty arrays
+                self.preset_pattern.poses.clear()
+                self.preset_pattern_path.poses.clear()
+                self.pub16.publish(self.preset_pattern)
+                self.pub18.publish(self.preset_pattern_path)
+
             
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
 
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
         
-    def submit_waypoint_3(self,x,y,z,yaw,path_orientation_style = 1):
+    def submit_waypoint_3(self,x,y,z,yaw,path_orientation_style = 1, alg=2):
         """submit the single waypoint relative to NED """
         try:
             roll = 0
@@ -1006,7 +990,18 @@ class windows(Tk):
                 rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
                 path_orientation_style = 4
 
+            alg = self.entry_to_int(alg)
+
+            if alg == 0:
+                rospy.logwarn("No algorithm preference specified defaulting to alg 2")
+                alg = 2
+
+            # self.orientation_style.layout.dim.append(MultiArrayDimension())
+            # self.orientation_style.data.append([path_orientation_style,int(alg)])
+
             self.orientation_style.data.append(path_orientation_style)
+            self.orientation_style.data.append(alg)
+            # self.orientation_style.data.append(path_orientation_style)
             self.pub15.publish(self.orientation_style)
 
         
@@ -1014,21 +1009,23 @@ class windows(Tk):
             self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
             self.pub5.publish(self.desired_path) # shows straight line path 
 
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
-            
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
+
+            if not self.preset_patterns_window == None:
+                self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+                
+                # erase thevisualization and publish the empty arrays
+                self.preset_pattern.poses.clear()
+                self.preset_pattern_path.poses.clear()
+                self.pub16.publish(self.preset_pattern)
+                self.pub18.publish(self.preset_pattern_path)
             
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
 
-    def submit_waypoint_4(self,lat,lon,z,yaw,path_orientation_style = 1):
+    def submit_waypoint_4(self,lat,lon,z,yaw,path_orientation_style = 1,alg=2):
            
         # need to verify this, particularly the depth
         # since the distance is less than 100 m we can assume flat plane tangent
@@ -1103,29 +1100,38 @@ class windows(Tk):
 
             #  adding the orientation style along the path 
             path_orientation_style = self.entry_to_int(path_orientation_style)
-            if path_orientation_style ==0:
+            if path_orientation_style == 0:
                 rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
                 path_orientation_style = 4
+            
+            alg = self.entry_to_int(alg)
+            if alg == 0:
+                rospy.logwarn("No algorithm preference specified defaulting to alg 2")
+                alg = 2
 
+            # self.orientation_style.layout.dim.append(MultiArrayDimension())
+            # self.orientation_style.data.append([path_orientation_style,int(alg)])
             self.orientation_style.data.append(path_orientation_style)
+            self.orientation_style.data.append(alg)
+            # self.orientation_style.data.append(path_orientation_style)
             self.pub15.publish(self.orientation_style)
 
         
             # Publishing waypoints array to the visualizer
             self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
             self.pub5.publish(self.desired_path) # shows straight line path 
-
-            self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
-            self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
-            
-            # erase thevisualization and publish the empty arrays
-            self.preset_pattern.poses.clear()
-            self.preset_pattern_path.poses.clear()
-            self.pub16.publish(self.preset_pattern)
-            self.pub18.publish(self.preset_pattern_path)
-            
+            if not self.preset_patterns_window == None:
+                self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_square_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_orbit_path_button.configure(state=DISABLED)
+                self.preset_patterns_window.submit_generate_arc_path_button.configure(state=DISABLED)
+                
+                # erase thevisualization and publish the empty arrays
+                self.preset_pattern.poses.clear()
+                self.preset_pattern_path.poses.clear()
+                self.pub16.publish(self.preset_pattern)
+                self.pub18.publish(self.preset_pattern_path)
+                
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
 
@@ -1327,7 +1333,7 @@ class windows(Tk):
         self.pub14.publish(self.path_generation_data)
         rospy.loginfo("Requesting path visualization")
             
-    def generate_square(self, relative_indicator, size, rotate_direction, path_orientation_style):
+    def generate_square(self, relative_indicator, size, rotate_direction, path_orientation_style,alg):
         size = self.entry_to_float(size)
         if size == 0: 
             rospy.logwarn("Cannot create square of size 0, defaulting to 1 m ")
@@ -1337,17 +1343,17 @@ class windows(Tk):
             
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
 
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
                         
                
         elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0, path_orientation_style) #dont really need this here tbh
+            self.submit_waypoint_2(0,0,0,0, path_orientation_style,alg) 
            
         elif relative_indicator =="":
             rospy.logwarn("start point not selected, defaulting to current pose")
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
 
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
                  
         
         # if relative_indicator == "1":
@@ -1371,10 +1377,10 @@ class windows(Tk):
             rotate = 90
     
 
-        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
-        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
-        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
-        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style)
+        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style,alg)
+        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style,alg)
+        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style,alg)
+        self.submit_waypoint_2(size,0,0,rotate, path_orientation_style,alg)
 
         # buttons are disabled until the next pattern is visualized
         self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
@@ -1388,7 +1394,7 @@ class windows(Tk):
         self.pub16.publish(self.preset_pattern)
         self.pub18.publish(self.preset_pattern_path)
         
-    def generate_orbit(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
+    def generate_orbit(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style,alg):
         radius = self.entry_to_float(radius)
         rotation_angle= self.entry_to_float(rotation_angle)*np.pi/180
 
@@ -1401,15 +1407,15 @@ class windows(Tk):
             
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
 
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
 
         elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+            self.submit_waypoint_2(0,0,0,0, path_orientation_style,alg)
                    
         elif relative_indicator =="":
             rospy.logwarn("start point not selected, defaulting to current pose")
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
 
 
 
@@ -1494,7 +1500,7 @@ class windows(Tk):
             # convert to degrees
             yaw = yaw *180/np.pi
 
-            self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)
+            self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style,alg)
             i+=1
         
         # add the last waypoint at exact desired location
@@ -1511,7 +1517,7 @@ class windows(Tk):
         # get yaw of last point in degrees
         yaw = (angle+np.pi)*180/np.pi
 
-        self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)  
+        self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style,alg)  
 
         # buttons are disabled until the next pattern is visualized
         self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
@@ -1525,7 +1531,7 @@ class windows(Tk):
         self.pub16.publish(self.preset_pattern)
         self.pub18.publish(self.preset_pattern_path)   
     
-    def generate_arc(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style):
+    def generate_arc(self, relative_indicator, radius, rotation_angle, rotation_direction,path_orientation_style,alg):
         radius = self.entry_to_float(radius)
         rotation_angle= self.entry_to_float(rotation_angle)*np.pi/180
 
@@ -1550,15 +1556,15 @@ class windows(Tk):
             
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
             # rospy.loginf(f"Start_yaw = ")
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
 
         elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0, path_orientation_style)
+            self.submit_waypoint_2(0,0,0,0, path_orientation_style,alg)
                    
         elif relative_indicator =="":
             rospy.logwarn("start point not selected, defaulting to current pose")
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
 
         
 
@@ -1638,7 +1644,7 @@ class windows(Tk):
             # convert to degrees
             yaw = yaw *180/np.pi
     
-            self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)
+            self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style,alg)
             
         
         # add the last waypoint at exact desired location
@@ -1654,7 +1660,7 @@ class windows(Tk):
         
         # get yaw of last point in degrees
         yaw = (angle+np.pi/2)*180/np.pi
-        self.submit_waypoint_3(new_x, new_y, z, yaw)   
+        self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style, alg)   
 
         # buttons are disabled until the next pattern is visualized
         self.preset_patterns_window.submit_generate_lawnmower_button.configure(state=DISABLED)
@@ -1668,7 +1674,7 @@ class windows(Tk):
         self.pub16.publish(self.preset_pattern)
         self.pub18.publish(self.preset_pattern_path)
      
-    def generate_lawnmower(self, relative_indicator, leg_length, leg_spacing, n_legs, rotate_direction, path_orientation_style):
+    def generate_lawnmower(self, relative_indicator, leg_length, leg_spacing, n_legs, rotate_direction, path_orientation_style,alg):
       
         leg_length = self.entry_to_float(leg_length)
         leg_spacing = self.entry_to_float(leg_spacing)
@@ -1701,25 +1707,25 @@ class windows(Tk):
             
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
 
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
                         
             # self.visualize_waypoint_1(0,0,0,0)
             # self.submit_waypoint_1(0,0,0,0, path_orientation_style)
             self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
             
         elif relative_indicator =="2":
-            self.submit_waypoint_2(0,0,0,0, path_orientation_style)
-            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+            self.submit_waypoint_2(0,0,0,0, path_orientation_style,alg)
+            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style,alg)
 
         elif relative_indicator =="":
             rospy.logwarn("start point not selected, defaulting to current pose")
             _,__,start_yaw = euler_from_quaternion((self.preset_pattern.poses[0].orientation.x,self.preset_pattern.poses[0].orientation.y,self.preset_pattern.poses[0].orientation.z, self.preset_pattern.poses[0].orientation.w))
 
-            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style)
+            self.submit_waypoint_3(self.preset_pattern.poses[0].position.x,self.preset_pattern.poses[0].position.y,self.preset_pattern.poses[0].position.z, start_yaw*180/np.pi, path_orientation_style,alg)
                  
             # self.visualize_waypoint_1(0,0,0,0)
             # self.submit_waypoint_1(0,0,0,0, path_orientation_style)
-            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style,alg)
             
 
         # self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
@@ -1745,12 +1751,12 @@ class windows(Tk):
        
 
         for i in range(1,n_legs):
-            self.submit_waypoint_2(leg_spacing,0,0,rotate, path_orientation_style)
+            self.submit_waypoint_2(leg_spacing,0,0,rotate, path_orientation_style,alg)
             if i == n_legs-1:
                 rotate = 0
             else:
                 rotate *=-1
-            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style)
+            self.submit_waypoint_2(leg_length,0,0,rotate, path_orientation_style,alg)
 
     
         # buttons are disabled until the next pattern is visualized
@@ -2373,7 +2379,6 @@ class windows(Tk):
         
         except ValueError as ve:
             rospy.logerr(f"Invalid input for waypoint: {ve}")
-
  
     def wgs84_to_ecef(self,lat, lon, alt):
         # constant from fossen pg 36 table 2.2
@@ -2428,12 +2433,44 @@ class windows(Tk):
         enu = self.ecef_to_enu(x, y, z)
         return enu
 
-       
+    def dubin(self, start:PoseStamped, end:PoseStamped):
 
-  
+        _,_,start_yaw  = euler_from_quaternion([start.pose.orientation.x, start.pose.orientation.y,start.pose.orientation.z,start.pose.orientation.w])
+        _,_,end_yaw  = euler_from_quaternion([end.pose.orientation.x, end.pose.orientation.y,end.pose.orientation.z,end.pose.orientation.w])
+        q0 = (start.pose.position.x, start.pose.position.y,start_yaw)
+        q1 = (end.pose.position.x, end.pose.position.y,end_yaw)
+        turning_radius = 1
+        step_size = 0.5
 
-    
+        path = dubins.shortest_path(q0, q1, turning_radius)
+
+     
+        configurations, _ = path.sample_many(step_size)
+
         
+        for wp in configurations:
+                  
+            new_wp = PoseStamped()
+            new_wp.pose.position.x = wp[0]
+            new_wp.pose.position.y = wp[1]
+            new_wp.pose.position.z = start.pose.position.z
+
+            q = quaternion_from_euler(0,0,wp[2])
+
+            new_wp.pose.orientation.x = q[0]
+            new_wp.pose.orientation.y = q[1]
+            new_wp.pose.orientation.z = q[2]
+            new_wp.pose.orientation.w = q[3]
+
+            self.goal_waypoints.poses.append(new_wp.pose)
+            self.desired_path.poses.append(new_wp)
+        
+        self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
+        self.pub5.publish(self.desired_path) # shows straight line path 
+
+        # print(configurations)
+        return configurations
+
 
 # frames in main window
 class InfoPage(LabelFrame):
@@ -2664,8 +2701,21 @@ class WaypointFrame(LabelFrame):
                                 "Smooth Transition" : 3,
                                 "RTR" : 4
                             }
+
+        alg_options = {"Alg 1" : 1,
+        "Alg 2" : 2,
+        }
+
+        waypoint_type = {"Target" : 1,
+        "Intermediate" : 2,
+        }
+
+
+
         # variable to hold orientation choice
         orientation_options_choice = StringVar()
+        alg_choice = StringVar()
+        waypoint_type_choice = StringVar()
 
 
         # frames 
@@ -2676,7 +2726,12 @@ class WaypointFrame(LabelFrame):
 
         # Orientation Frame
         self.orientation_options_frame = LabelFrame(self, text="Orientation Along Path")
-        self.orientation_options_frame.grid(row = row_index, column=1, rowspan=6, columnspan=1, padx=20, pady=10, sticky="nw")
+        self.orientation_options_frame.grid(row = row_index, column=1, rowspan=6, columnspan=1, padx=20, pady=10, sticky="new")
+        # row_index +=1
+
+        # Alg Choice
+        self.algorithm_frame = LabelFrame(self, text="Algorithm")
+        self.algorithm_frame.grid(row = row_index, column=2, rowspan=6, columnspan=1, padx=20, pady=10, sticky="new")
         row_index +=1
      
        
@@ -2705,7 +2760,7 @@ class WaypointFrame(LabelFrame):
 
         # add waypoints frame
         self.add_waypoints_frame = LabelFrame(self, text="Add Waypoints")
-        self.add_waypoints_frame.grid(row = row_index, column=0, columnspan=3, padx=20, pady=10, sticky="ew")
+        self.add_waypoints_frame.grid(row = row_index, column=0, columnspan=4, padx=20, pady=10, sticky="ew")
         row_index +=1
 
     
@@ -2760,7 +2815,7 @@ class WaypointFrame(LabelFrame):
     
         self.visualize_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Visualize", command=lambda: controller.visualize_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get()))
         self.visualize_waypoint_button_1 .grid(row = row_index, column=0,padx=5, pady=5)  
-        self.submit_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Submit", command=lambda: controller.submit_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get(), orientation_options_choice.get()))
+        self.submit_waypoint_button_1 = Button(self.add_waypoints_frame_1, text=f"Submit", command=lambda: controller.submit_waypoint_1(x1.get(),y1.get(),z1.get(),yaw1.get(), orientation_options_choice.get(), alg_choice.get()))
         self.submit_waypoint_button_1 .grid(row = row_index, column=1,padx=5, pady=5) 
         self.submit_waypoint_button_1.config(state=DISABLED)
 
@@ -2797,7 +2852,7 @@ class WaypointFrame(LabelFrame):
     
         visualize_waypoint_button_2 = Button(self.add_waypoints_frame_2, text=f"Visualize", command=lambda: controller.visualize_waypoint_2(x2.get(),y2.get(),z2.get(),yaw2.get()))
         visualize_waypoint_button_2 .grid(row = row_index, column=0,padx=5, pady=5)  
-        submit_waypoint_button_2 = Button(self.add_waypoints_frame_2, text=f"Submit", command=lambda: controller.submit_waypoint_2(x2.get(),y2.get(),z2.get(),yaw2.get(),orientation_options_choice.get()))
+        submit_waypoint_button_2 = Button(self.add_waypoints_frame_2, text=f"Submit", command=lambda: controller.submit_waypoint_2(x2.get(),y2.get(),z2.get(),yaw2.get(),orientation_options_choice.get(), alg_choice.get()))
         submit_waypoint_button_2 .grid(row = row_index, column=1,padx=5, pady=5)   
 
         
@@ -2830,7 +2885,7 @@ class WaypointFrame(LabelFrame):
         visualize_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Visualize", command=lambda: controller.visualize_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get()))
         visualize_waypoint_button_3 .grid(row = row_index, column=0,padx=5, pady=5)  
 
-        submit_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Submit", command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get(), orientation_options_choice.get()))
+        submit_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Submit", command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get(), orientation_options_choice.get(), alg_choice.get()))
         submit_waypoint_button_3 .grid(row = row_index, column=1,padx=5, pady=5)   
 
         row_index = 0
@@ -2861,7 +2916,7 @@ class WaypointFrame(LabelFrame):
     
         visualize_waypoint_button_2 = Button(self.add_waypoints_frame_2, text=f"Visualize", command=lambda: controller.visualize_waypoint_2(x2.get(),y2.get(),z2.get(),yaw2.get()))
         visualize_waypoint_button_2 .grid(row = row_index, column=0,padx=5, pady=5)  
-        submit_waypoint_button_2 = Button(self.add_waypoints_frame_2, text=f"Submit", command=lambda: controller.submit_waypoint_2(x2.get(),y2.get(),z2.get(),yaw2.get(),orientation_options_choice.get()))
+        submit_waypoint_button_2 = Button(self.add_waypoints_frame_2, text=f"Submit", command=lambda: controller.submit_waypoint_2(x2.get(),y2.get(),z2.get(),yaw2.get(),orientation_options_choice.get(), alg_choice.get()))
         submit_waypoint_button_2 .grid(row = row_index, column=1,padx=5, pady=5)   
 
         
@@ -2894,7 +2949,7 @@ class WaypointFrame(LabelFrame):
         visualize_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Visualize", command=lambda: controller.visualize_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get()))
         visualize_waypoint_button_3 .grid(row = row_index, column=0,padx=5, pady=5)  
 
-        submit_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Submit", command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get(), orientation_options_choice.get()))
+        submit_waypoint_button_3 = Button(self.add_waypoints_frame_3, text=f"Submit", command=lambda: controller.submit_waypoint_3(x3.get(),y3.get(),z3.get(),yaw3.get(), orientation_options_choice.get(), alg_choice.get()))
         submit_waypoint_button_3 .grid(row = row_index, column=1,padx=5, pady=5)   
 
         # gps waypoint
@@ -2925,12 +2980,8 @@ class WaypointFrame(LabelFrame):
         visualize_waypoint_button_4 = Button(self.add_waypoints_frame_4, text=f"Visualize", command=lambda: controller.visualize_waypoint_4(latitude.get(), longitude.get(), depth.get(),yaw4.get()))
         visualize_waypoint_button_4 .grid(row = row_index, column=0,padx=5, pady=5)  
 
-        submit_waypoint_button_4 = Button(self.add_waypoints_frame_4, text=f"Submit", command=lambda: controller.submit_waypoint_4(latitude.get(), longitude.get(), depth.get(),yaw4.get(), orientation_options_choice.get()))
+        submit_waypoint_button_4 = Button(self.add_waypoints_frame_4, text=f"Submit", command=lambda: controller.submit_waypoint_4(latitude.get(), longitude.get(), depth.get(),yaw4.get(), orientation_options_choice.get(), alg_choice.get()))
         submit_waypoint_button_4 .grid(row = row_index, column=1,padx=5, pady=5)   
-
-
-        
-
 
 
         # get orientation to use along path 
@@ -2940,6 +2991,15 @@ class WaypointFrame(LabelFrame):
             orientation_options_button= tk.Radiobutton(self.orientation_options_frame, text = text, variable =  orientation_options_choice, 
                         value = value, indicatoron=0, padx=10,pady=5)
             orientation_options_button.grid(row = value-1, column = 0, padx=10, pady=5, columnspan =1, sticky='ew')
+
+
+        # get Algorithm to use
+
+        for (text, value) in alg_options.items():
+        
+            alg_choice_button= tk.Radiobutton(self.algorithm_frame, text = text, variable =  alg_choice, 
+                        value = value, indicatoron=0, padx=10,pady=5)
+            alg_choice_button.grid(row = value-1, column = 0, padx=10, pady=5, columnspan =1, sticky='ew')
 
 
     def path_generation_button(self, indicator):
@@ -3279,12 +3339,6 @@ class ControllerParamFrame(Toplevel):
         submit_algorithm_button = Button(self.path_following_params_frame, text=f"Submit", command=lambda: controller.submit_algorithm(algorithm.get()))
         submit_algorithm_button.grid(row= row_index, column=2,  padx=5, pady=10)
         row_index +=1
-
-
-  
-
-
-
   
 
 
@@ -3331,15 +3385,22 @@ class PresetPatternsFrame(Toplevel):
                                 "Smooth Transition" : 3,
                                 "RTR" : 4
                             }
+
+        alg_options = {"Alg 1" : 1,
+                "Alg 2" : 2,
+                }
+
         
         orientation_options_choice2 = StringVar()
+        alg_choice2 = StringVar()
 
 
         row_index =0
     
         # Orientation Frame
         self.orientation_options_frame2 = LabelFrame(self.preset_patterns_frame, text="Orientation Along Path")
-        self.orientation_options_frame2.grid(row = 0, column=3, rowspan=6, columnspan=1, padx=20, pady=10, sticky="new")
+        # self.orientation_options_frame2.grid(row = 3, column=0, rowspan=6, columnspan=2, padx=20, pady=10, sticky="new")
+        self.orientation_options_frame2.grid(row = 3, column=0, columnspan=2, padx=20, pady=10, sticky="new")
          # get orientation to use along path 
 
         for (text, value) in orientation_options.items():
@@ -3348,6 +3409,20 @@ class PresetPatternsFrame(Toplevel):
                         value = value, indicatoron=0, padx=10,pady=5)
             # orientation_options_button.grid(row = value, column = 0, padx=5, pady=5,columnspan =2,sticky='ew')
             orientation_options_button2.grid(row = value-1, column = 0, padx=10, pady=5, columnspan =1, sticky='ew')
+
+
+        # algorithm frame
+        self.algorithm_frame2 = LabelFrame(self.preset_patterns_frame, text="Algorithm")
+        self.algorithm_frame2.grid(row = 3, column=2, rowspan=6, columnspan=2, padx=20, pady=10, sticky="new")
+
+        # alg_choice
+        
+        for (text, value) in alg_options.items():
+        
+            alg_choice_button2= tk.Radiobutton(self.algorithm_frame2, text = text, variable =  alg_choice2, 
+                        value = value, indicatoron=0, padx=10, pady=5)
+            alg_choice_button2.grid(row = value-1, column = 0, padx=10, pady=5, sticky='ew')
+            
 
        
         # preset patterns frames
@@ -3365,7 +3440,7 @@ class PresetPatternsFrame(Toplevel):
             relative_option_button.grid(row = 1, column=value-1, padx=5, pady=5, sticky="ew")
 
 
-        row_index = 2
+        row_index = 4
         # self.square_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Square Pattern")
         # self.square_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
         # # row_index +=1
@@ -3378,25 +3453,25 @@ class PresetPatternsFrame(Toplevel):
 
         self.circle_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Orbit Pattern")
         self.circle_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
-        row_index +=1
+        # row_index +=1
 
         # self.lawnmower_frame = LabelFrame(self.preset_patterns_frame , text="Lawnmower Pattern")
         # self.lawnmower_frame.grid(row = row_index, column=0, rowspan=1, columnspan=1, padx=20, pady=10, sticky="new")
         # row_index +=1
 
         self.arc_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Arc Pattern")
-        self.arc_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
+        self.arc_pattern_frame.grid(row = row_index, column=2, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
         row_index +=1
 
 
         
         self.lawnmower_frame = LabelFrame(self.preset_patterns_frame , text="Lawnmower Pattern")
         self.lawnmower_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
-        row_index +=1
+        # row_index +=1
         
 
         self.square_pattern_frame = LabelFrame(self.preset_patterns_frame , text="Square Pattern")
-        self.square_pattern_frame.grid(row = row_index, column=0, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
+        self.square_pattern_frame.grid(row = row_index, column=2, rowspan=1, columnspan=2, padx=20, pady=10, sticky="new")
         row_index +=1
 
     
@@ -3423,7 +3498,7 @@ class PresetPatternsFrame(Toplevel):
         visualize_generate_square_path_button = Button(self.square_pattern_frame, text=f"Visualize", command=lambda: controller.visualize_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get(),orientation_options_choice2.get()))
         visualize_generate_square_path_button.grid(row = row_index, column=0, columnspan =1, padx=5, pady=5, sticky = 'ew')   
 
-        self.submit_generate_square_path_button = Button(self.square_pattern_frame, text=f"Submit", command=lambda: controller.generate_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get(),orientation_options_choice2.get()))
+        self.submit_generate_square_path_button = Button(self.square_pattern_frame, text=f"Submit", command=lambda: controller.generate_square(relative_option_button_text.get(), square_size.get(),rotate_directions_button_text1.get(),orientation_options_choice2.get(), alg_choice2.get()))
         self.submit_generate_square_path_button.grid(row = row_index, column=1, columnspan =1, padx=5, pady=5, sticky = 'ew')   
         self.submit_generate_square_path_button.configure(state=DISABLED)
         
@@ -3455,7 +3530,7 @@ class PresetPatternsFrame(Toplevel):
         visualize_generate_orbit_path_button = Button(self.circle_pattern_frame, text=f"Visualize", command=lambda: controller.visualize_orbit(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get(), orientation_options["Smooth Transition"]))
         visualize_generate_orbit_path_button.grid(row = row_index, column=0,columnspan=1, padx=5, pady=5, sticky='ew')   
         
-        self.submit_generate_orbit_path_button = Button(self.circle_pattern_frame, text=f"Submit", command=lambda: controller.generate_orbit(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get(), orientation_options["Smooth Transition"]))
+        self.submit_generate_orbit_path_button = Button(self.circle_pattern_frame, text=f"Submit", command=lambda: controller.generate_orbit(relative_option_button_text.get(), radius.get(), angle.get(), rotate_directions_button_text2.get(), orientation_options["Smooth Transition"], alg_choice2.get()))
         self.submit_generate_orbit_path_button.grid(row = row_index, column=1,columnspan=1, padx=5, pady=5, sticky='ew')   
         self.submit_generate_orbit_path_button.configure(state=DISABLED)
 
@@ -3493,7 +3568,7 @@ class PresetPatternsFrame(Toplevel):
         visualize_generate_lawnmower_button.grid(row = row_index, column=0,columnspan=1, padx=5, pady=5, sticky='ew')
         # row_index+=1
 
-        self.submit_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Submit", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"]))
+        self.submit_generate_lawnmower_button = Button(self.lawnmower_frame, text=f"Submit", command=lambda: controller.generate_lawnmower(relative_option_button_text.get(), leg_length.get(), leg_spacing.get(), n_legs.get(),rotate_directions_button_text3.get(), orientation_options["Translate Rotate"], alg_choice2.get()))
         self.submit_generate_lawnmower_button.grid(row = row_index, column=1,columnspan=1, padx=5, pady=5, sticky='ew')
         self.submit_generate_lawnmower_button.configure(state=DISABLED)
       
@@ -3523,9 +3598,11 @@ class PresetPatternsFrame(Toplevel):
         visualize_generate_arc_path_button.grid(row = row_index, column=0,columnspan=1, padx=5, pady=5, sticky='ew')   
 
 
-        self.submit_generate_arc_path_button = Button(self.arc_pattern_frame, text=f"Submit", command=lambda: controller.generate_arc(relative_option_button_text.get(), arc_radius.get(), arc_angle.get(), rotate_directions_button_text4.get(),orientation_options["Smooth Transition"]))
+        self.submit_generate_arc_path_button = Button(self.arc_pattern_frame, text=f"Submit", command=lambda: controller.generate_arc(relative_option_button_text.get(), arc_radius.get(), arc_angle.get(), rotate_directions_button_text4.get(),orientation_options["Smooth Transition"], alg_choice2.get()))
         self.submit_generate_arc_path_button.grid(row = row_index, column=1,columnspan=1, padx=5, pady=5, sticky='ew')   
         self.submit_generate_arc_path_button.configure(state=DISABLED)
+
+
 
 
     def close(self,controller):

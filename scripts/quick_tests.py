@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rospy
 import numpy as np
-from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped
+from geometry_msgs.msg import Pose, PoseArray, PoseWithCovarianceStamped, PoseStamped
 from tf.transformations import quaternion_from_euler,quaternion_matrix, translation_matrix, euler_matrix, concatenate_matrices, quaternion_from_matrix, translation_from_matrix, euler_from_quaternion
 from tkinter import Tk, Label, Entry, Button, LabelFrame, messagebox
 from nav_msgs.msg import Path
@@ -65,79 +65,108 @@ if not desired_path.poses:
 
 
 '''
-def wgs84_to_ecef(lat, lon, h):
-    # fossen pg 36 table 2.2
-    # WGS84 ellipsoid constants
-    re = 6378137    # semi-major axis (meters)
-    rp = 6356752  # semi-minor axis (meters)
+# def wgs84_to_ecef(lat, lon, h):
+#     # fossen pg 36 table 2.2
+#     # WGS84 ellipsoid constants
+#     re = 6378137    # semi-major axis (meters)
+#     rp = 6356752  # semi-minor axis (meters)
 
-    # conversion to radians
-    lat = np.radians(lat)
-    lon = np.radians(lon)
+#     # conversion to radians
+#     lat = np.radians(lat)
+#     lon = np.radians(lon)
     
-    # fossen pg 36 eq 2.88
-    # radius of curvature of the prime vertical
-    N = (re**2) / np.sqrt((re**2)* (np.cos(lat)**2) + (rp**2)* (np.sin(lat)**2))
+#     # fossen pg 36 eq 2.88
+#     # radius of curvature of the prime vertical
+#     N = (re**2) / np.sqrt((re**2)* (np.cos(lat)**2) + (rp**2)* (np.sin(lat)**2))
 
-    # fossen pg 38 eq 2.93
-    X = (N + h) * np.cos(lat) * np.cos(lon)
-    Y = (N + h) * np.cos(lat) * np.sin(lon)
+#     # fossen pg 38 eq 2.93
+#     X = (N + h) * np.cos(lat) * np.cos(lon)
+#     Y = (N + h) * np.cos(lat) * np.sin(lon)
     
-    Z = ((rp**2)*N/(re**2)+ h) * np.sin(lat)
+#     Z = ((rp**2)*N/(re**2)+ h) * np.sin(lat)
     
 
-    return X, Y, Z
+#     return X, Y, Z
 
-def ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref):
-    # Convert reference position to ECEF
-    x_ref, y_ref, z_ref = wgs84_to_ecef(lat_ref, lon_ref, alt_ref)
+# def ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref):
+#     # Convert reference position to ECEF
+#     x_ref, y_ref, z_ref = wgs84_to_ecef(lat_ref, lon_ref, alt_ref)
 
-    # Translation to the reference point
-    dx = x - x_ref
-    dy = y - y_ref
-    dz = z - z_ref
+#     # Translation to the reference point
+#     dx = x - x_ref
+#     dy = y - y_ref
+#     dz = z - z_ref
 
-    # Reference latitude and longitude in radians
-    lat_ref = np.radians(lat_ref)
-    lon_ref = np.radians(lon_ref)
+#     # Reference latitude and longitude in radians
+#     lat_ref = np.radians(lat_ref)
+#     lon_ref = np.radians(lon_ref)
 
-    # Create the rotation matrix
-    R = np.array([
-        [-np.sin(lon_ref),  np.cos(lon_ref), 0],
-        [-np.sin(lat_ref) * np.cos(lon_ref), -np.sin(lat_ref) * np.sin(lon_ref), np.cos(lat_ref)],
-        [ np.cos(lat_ref) * np.cos(lon_ref),  np.cos(lat_ref) * np.sin(lon_ref), np.sin(lat_ref)]
-    ])
+#     # Create the rotation matrix
+#     R = np.array([
+#         [-np.sin(lon_ref),  np.cos(lon_ref), 0],
+#         [-np.sin(lat_ref) * np.cos(lon_ref), -np.sin(lat_ref) * np.sin(lon_ref), np.cos(lat_ref)],
+#         [ np.cos(lat_ref) * np.cos(lon_ref),  np.cos(lat_ref) * np.sin(lon_ref), np.sin(lat_ref)]
+#     ])
 
-    # Apply the rotation
-    enu = R.dot(np.array([dx, dy, dz]))
+#     # Apply the rotation
+#     enu = R.dot(np.array([dx, dy, dz]))
 
-    return enu
+#     return enu
 
-def wgs84_to_enu(lat, lon, alt, lat_ref, lon_ref, alt_ref):
-    x, y, z = wgs84_to_ecef(lat, lon, alt)
-    enu = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref)
-    return enu
+# def wgs84_to_enu(lat, lon, alt, lat_ref, lon_ref, alt_ref):
+#     x, y, z = wgs84_to_ecef(lat, lon, alt)
+#     enu = ecef_to_enu(x, y, z, lat_ref, lon_ref, alt_ref)
+#     return enu
 
-# Example usage:
-lat, lon, alt = 42.2808, -83.7430, 270  # Ann Arbor, MI
-lat_ref, lon_ref, alt_ref = 42.281, -83.742, 260  # Reference point origin of ned frame
-
-
-enu_coords = wgs84_to_enu(lat, lon, alt, lat_ref, lon_ref, alt_ref)
-print("ENU Coordinates:", enu_coords)
+# # Example usage:
+# lat, lon, alt = 42.2808, -83.7430, 270  # Ann Arbor, MI
+# lat_ref, lon_ref, alt_ref = 42.281, -83.742, 260  # Reference point origin of ned frame
 
 
-
-lon = 10.3 
-lat = 63
-h = 0
-
-ecef_coords  = wgs84_to_ecef(lat, lon, h)
-
-print(f"ECEF COORDS: {ecef_coords}")
+# enu_coords = wgs84_to_enu(lat, lon, alt, lat_ref, lon_ref, alt_ref)
+# print("ENU Coordinates:", enu_coords)
 
 
-x, y,_,_ = utm.from_latlon(51.2, 7.5)
-print(x)
 
+# lon = 10.3 
+# lat = 63
+# h = 0
+
+# ecef_coords  = wgs84_to_ecef(lat, lon, h)
+
+# print(f"ECEF COORDS: {ecef_coords}")
+
+
+# x, y,_,_ = utm.from_latlon(51.2, 7.5)
+# print(x)
+import dubins
+
+
+start= PoseStamped()
+
+end = PoseStamped()
+end.pose.position.x = 4
+end.pose.position.y = 0
+end.pose.position.z = 0
+
+q = quaternion_from_euler(0,0,np.pi/2)
+
+end.pose.orientation.x = q[0]
+end.pose.orientation.y = q[1]
+end.pose.orientation.z = q[2]
+end.pose.orientation.w = q[3]
+
+_,_,start_yaw  = euler_from_quaternion([start.pose.orientation.x, start.pose.orientation.y,start.pose.orientation.z,start.pose.orientation.w])
+_,_,end_yaw  = euler_from_quaternion([end.pose.orientation.x, end.pose.orientation.y,end.pose.orientation.z,end.pose.orientation.w])
+
+q0 = (start.pose.position.x, start.pose.position.y,start_yaw)
+q1 = (end.pose.position.x, end.pose.position.y,end_yaw)
+
+turning_radius = 2
+step_size = 0.5
+
+path = dubins.shortest_path(q0, q1, turning_radius)
+configurations, _ = path.sample_many(step_size)
+print(configurations)
+# rospy.loginfo(path)
 
