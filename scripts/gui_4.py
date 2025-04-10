@@ -11,7 +11,7 @@ from tkinter.ttk import *
 from std_msgs.msg import Bool,Int8,Float32MultiArray, String, Int8MultiArray, MultiArrayDimension
 from nav_msgs.msg import Path
 import utm
-import dubins
+# import dubins
 
 # need to find a way to get the initial coordinates that the ned frame is located at
 
@@ -34,7 +34,8 @@ class windows(Tk):
         self.pub17= rospy.Publisher("path_planner_parameters", Float32MultiArray, queue_size=10) # not used yet
         self.pub18 = rospy.Publisher("visualize_preset_pattern_path", Path, queue_size=1) # not used yet
         # Setting window icon
-        self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
+        self.icon = PhotoImage(file="/home/frog-onr/mhl_ws/src/blue_rov_waypoint_interface/scripts/waypoint_interface_image.png")
+        
         self.iconphoto(True, self.icon)
 
 
@@ -2433,43 +2434,43 @@ class windows(Tk):
         enu = self.ecef_to_enu(x, y, z)
         return enu
 
-    def dubin(self, start:PoseStamped, end:PoseStamped):
+    # def dubin(self, start:PoseStamped, end:PoseStamped):
 
-        _,_,start_yaw  = euler_from_quaternion([start.pose.orientation.x, start.pose.orientation.y,start.pose.orientation.z,start.pose.orientation.w])
-        _,_,end_yaw  = euler_from_quaternion([end.pose.orientation.x, end.pose.orientation.y,end.pose.orientation.z,end.pose.orientation.w])
-        q0 = (start.pose.position.x, start.pose.position.y,start_yaw)
-        q1 = (end.pose.position.x, end.pose.position.y,end_yaw)
-        turning_radius = 1
-        step_size = 0.5
+    #     _,_,start_yaw  = euler_from_quaternion([start.pose.orientation.x, start.pose.orientation.y,start.pose.orientation.z,start.pose.orientation.w])
+    #     _,_,end_yaw  = euler_from_quaternion([end.pose.orientation.x, end.pose.orientation.y,end.pose.orientation.z,end.pose.orientation.w])
+    #     q0 = (start.pose.position.x, start.pose.position.y,start_yaw)
+    #     q1 = (end.pose.position.x, end.pose.position.y,end_yaw)
+    #     turning_radius = 1
+    #     step_size = 0.5
 
-        path = dubins.shortest_path(q0, q1, turning_radius)
+    #     path = dubins.shortest_path(q0, q1, turning_radius)
 
      
-        configurations, _ = path.sample_many(step_size)
+    #     configurations, _ = path.sample_many(step_size)
 
         
-        for wp in configurations:
+    #     for wp in configurations:
                   
-            new_wp = PoseStamped()
-            new_wp.pose.position.x = wp[0]
-            new_wp.pose.position.y = wp[1]
-            new_wp.pose.position.z = start.pose.position.z
+    #         new_wp = PoseStamped()
+    #         new_wp.pose.position.x = wp[0]
+    #         new_wp.pose.position.y = wp[1]
+    #         new_wp.pose.position.z = start.pose.position.z
 
-            q = quaternion_from_euler(0,0,wp[2])
+    #         q = quaternion_from_euler(0,0,wp[2])
 
-            new_wp.pose.orientation.x = q[0]
-            new_wp.pose.orientation.y = q[1]
-            new_wp.pose.orientation.z = q[2]
-            new_wp.pose.orientation.w = q[3]
+    #         new_wp.pose.orientation.x = q[0]
+    #         new_wp.pose.orientation.y = q[1]
+    #         new_wp.pose.orientation.z = q[2]
+    #         new_wp.pose.orientation.w = q[3]
 
-            self.goal_waypoints.poses.append(new_wp.pose)
-            self.desired_path.poses.append(new_wp)
+    #         self.goal_waypoints.poses.append(new_wp.pose)
+    #         self.desired_path.poses.append(new_wp)
         
-        self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
-        self.pub5.publish(self.desired_path) # shows straight line path 
+    #     self.pub3.publish(self.goal_waypoints) # shows all target waypoint posed
+    #     self.pub5.publish(self.desired_path) # shows straight line path 
 
-        # print(configurations)
-        return configurations
+    #     # print(configurations)
+    #     return configurations
 
 
 # frames in main window

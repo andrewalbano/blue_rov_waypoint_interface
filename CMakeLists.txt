@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   nav_msgs
   tf
+  
 )
 
 ## System dependencies are found with CMake's conventions
@@ -208,7 +209,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-catkin_install_python(PROGRAMS scripts/gui_3.py scripts/gui_2.py scripts/gui.py
+catkin_install_python(PROGRAMS scripts/gui_4.py scripts/gui_3.py scripts/gui_2.py scripts/gui.py
   DESTINATION $(CATKIN_PACKAGE_BIN_DESTINATION)
 )
 
