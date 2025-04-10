@@ -770,8 +770,8 @@ class windows(Tk):
             #  adding the orientation style along the path 
             path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
-                rospy.logwarn("No orientation style specified along the path, defaulting to RTR")
-                path_orientation_style = 4
+                rospy.logwarn("No orientation style specified along the path, defaulting to TR")
+                path_orientation_style = 1
             
             alg = self.entry_to_int(alg)
             if alg == 0:
@@ -882,8 +882,8 @@ class windows(Tk):
             #  adding the orientation style along the path 
             path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
-                rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
-                path_orientation_style = 4
+                rospy.logwarn("No orientation style specified aliong the path, defaulting to TR")
+                path_orientation_style = 1
 
             alg = self.entry_to_int(alg)
             if alg == 0:
@@ -987,7 +987,7 @@ class windows(Tk):
             #  adding the orientation style along the path 
             path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style ==0:
-                rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
+                rospy.logwarn("No orientation style specified aliong the path, defaulting to TR")
                 path_orientation_style = 4
 
             alg = self.entry_to_int(alg)
@@ -1101,7 +1101,7 @@ class windows(Tk):
             #  adding the orientation style along the path 
             path_orientation_style = self.entry_to_int(path_orientation_style)
             if path_orientation_style == 0:
-                rospy.logwarn("No orientation style specified aliong the path, defaulting to RTR")
+                rospy.logwarn("No orientation style specified aliong the path, defaulting to TR")
                 path_orientation_style = 4
             
             alg = self.entry_to_int(alg)

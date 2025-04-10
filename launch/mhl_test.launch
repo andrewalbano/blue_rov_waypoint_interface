@@ -1,0 +1,127 @@
+<launch>
+  <!-- The GStreamer framerate needs to be an integral fraction -->
+  <arg name="FPS" default="30/1"/>
+  <arg name="port" default="5601"/>
+
+  <!-- <arg name="maxAngle" default="120"/>
+  <arg name="sonarRange" default="3"/> -->
+
+  <!-- ping360 terminal params -->
+  <!-- <arg name="maxAngle" default="45"/> -->
+  <param name="maxAngle" type="int" value="60"/> 
+  <!-- <arg name="sonarRange" default="5"/> -->
+  <param name="sonarRange" type="double" value="3"/>   
+
+
+  <node pkg="nodelet" type="nodelet"
+    name="gscam_standalone_nodelet" args="manager"
+    output="log"/>
+
+  <node pkg="nodelet" type="nodelet"
+    name="GSCamNodelet" 
+    args="load gscam/GSCamNodelet gscam_standalone_nodelet" 
+    output="screen">
+    <param name="camera_name" value="default"/>
+    <param name="gscam_config" value="udpsrc port=$(arg port) ! application/x-rtp, media=(string)video, clock-rate=(int)90000, encoding-name=(string)H264, framerate=$(arg FPS) ! rtph264depay ! avdec_h264 ! queue ! videoconvert"/>
+    <param name="frame_id" value="rov_camera_frame"/>
+    <param name="sync_sink" value="false"/>
+    <param name="camera_info_url" value="package://bluerov-bringup/param/default.yaml"/>
+    <param name="use_gst_timestamps" value="true"/>
+  </node>
+
+  <node pkg="waterlinked_a50_ros_driver" name="dvl_publisher" type="publisher.py" output="log" args="_do_log_raw_data:=true">
+  </node>
+  <node pkg="waterlinked_a50_ros_driver" name="dvl_dr_reset" type="reset.py" output="log"/>
+  <!-- <node pkg="ping_sonar" name="ping_publisher" type="ping1d_pub.py" output="screen" args="_mode:=udp">
+  <node pkg="ping360" name="ping360_publisher" type="ping360_pub.py" output="screen"/> args="__udp:=192.168.2.2:9092"  -->
+    <!-- <param name="udp_address" type="string" value="192.168.2.2:9092" />
+  <node name="ping360_scan" pkg="ping360" type="ping360_scan.py" output="screen"/> -->
+  <!-- </node> -->
+
+  <include file='/home/frog-onr/mhl_ws/src/bluerov-onr-bringup/oculus_ros/launch/default.launch' />
+  <!-- <node pkg="ping_sonar" name="ping_publisher" type="ping1d_pub.py" output="screen" args="_mode:=udp"/> -->
+  <!-- <arg name="maxAngle" default="60"/> -->
+  <!-- <arg name="sonarRange" default="3"/> -->
+  <!-- <node pkg="ping360" type="ping360_pub.py" name="ping360_publisher" args="_udp:=192.168.2.2:9092 _maxAngle:=$(arg maxAngle)"/> -->
+  
+  <!-- <node pkg="ping360" type="ping360_pub.py" name="ping360_publisher" args="_udp:=192.168.2.2:9092 _maxAngle:=$(arg maxAngle) _sonarRange:=$(arg sonarRange)"/> -->
+  <!-- <node pkg="ping360" name="ping360_publisher" type="ping360_pub.py" output="screen" args="__udp:=192.168.2.2:9092"/> -->
+
+  <!-- <param name="udp_address" type="string" value="192.168.2.2:9092"/> -->
+  <!-- <node name="ping360_scan" pkg="ping360" type="ping360_scan.py" output="screen"/> -->
+  <!-- <node name="ping360_stf" pkg="tf2_ros" type="static_transform_publisher" args="90 -110.5 -120.2 0 0 0 1 base_link ping360_link" output="screen"/> -->
+
+
+  <arg name="fcu_url" default="udp://:14550@127.0.0.1:14549"/>z
+  <arg name="gcs_url" default="udp://:14549@127.0.0.1:14548"/>
+  <arg name="video_udp_port" default="5600"/>
+  <arg name="system_id" default="255"/>
+  <arg name="component_id" default="240"/>
+  <arg name="tgt_system" default="1"/>
+  <arg name="tgt_component" default="1"/>
+  <arg name="pluginlists_yaml" value="$(find bluerov_ros_playground)/launch/mav_pluginlists.yaml"/>
+  <arg name="config_yaml" value="$(find mavros)/launch/apm_config.yaml"/>
+  <arg name="joy_dev" default="/dev/input/js0"/>
+  <arg name="log_output" default="log"/>
+  <arg name="atm_pressure" default="103000.0"/>
+  <arg name="water_density" default="1027.0" />
+
+  <node pkg="mavros" type="mavros_node" name="mavros" required="true" clear_params="true" output="$(arg log_output)">
+    <param name="fcu_url" value="$(arg fcu_url)"/>
+    <param name="gcs_url" value="$(arg gcs_url)"/>
+    <param name="system_id" value="$(arg system_id)"/>
+    <param name="component_id" value="$(arg component_id)"/>
+    <param name="target_system_id" value="$(arg tgt_system)"/>
+    <param name="target_component_id" value="$(arg tgt_component)"/>
+
+    <!-- load blacklist, config -->
+    <rosparam command="load" file="$(arg pluginlists_yaml)"/>
+    <rosparam command="load" file="$(arg config_yaml)"/>
+  </node>
+
+  <!-- start the joystick driver -->
+  <node respawn="true" pkg="joy" type="joy_node" name="joy_node">
+    <param name="dev" type="string" value="$(arg joy_dev)" />
+  </node>
+
+  <node pkg="rosservice" type="rosservice" name="mavros_set_stream" args="call --wait /mavros/set_stream_rate 0 10 1"/>
+
+  <node pkg="bluerov_ros_playground" type="user_mav" name="user_node" output="$(arg log_output)">
+    <param name="video_udp_port" value="$(arg video_udp_port)"/>
+  </node>
+
+  <node pkg="onr_utils" type="depth_pub.py" name="depth_publisher"/>
+
+  <node respawn="true" pkg="bluerov_ros_playground" type="barometer.py"
+    name="bar30_listener" output = "log">
+    <param name="atm_pressure" value="$(arg atm_pressure)"/>
+    <param name="water_density" value="$(arg water_density)"/>
+  </node>
+
+  <node pkg="bluerov_state_estimation_online" type="localization_node"  name="localization"/>
+  
+
+    
+  <!-- launching waypoint gui-->
+  <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui_4.py" output="screen"/>
+  <!-- launching motion controller -->
+  <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller.py" output="log"/>
+  <node name="path_planner" pkg="blue_rov_path_plan" type="path_planner.py" output="screen"/>
+
+    
+  
+  <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>
+  <!-- <node pkg="tf" type="static_transform_publisher" name="base2cam" args="0.21 0.0 0 0 0 0 base_link camera_link 100"/> -->
+  <node pkg="tf" type="static_transform_publisher" name="base2cam" args="0.15742 0.0 0 0 0 0 base_link camera_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="base2dvl" args="0.16443882752 0.004293588903 0.28362510322 0 0 0.05054822579625977 base_link dvl_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="base2bar" args="0.0 0.0 0.0 0 0 0 base_link bar_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="base2sonar" args="0.164107 0.10618 0.30638500108 0 0 0 base_link sonar_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="base2imu" args="0 0 0 0 0 0 base_link imu_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="tmpned2base" args="0.3 -0.2 0.5 0 0 0 NED base_link 100"/>
+  <node pkg="tf" type="static_transform_publisher" name="ping360_stf" args="0.09 0.12531 -0.1216 0 0 0 base_link ping360_link 100"/>
+  <!-- <node pkg="tf" type="static_transform_publisher" name="monotoping360_stf" args="-0.06729 -0.012531 -0.013877 0 0 0 ping360_link camera_link 100"/> -->
+
+  <!-- Launch rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/mhl_viz.rviz" />
+
+</launch>

@@ -29,7 +29,8 @@
 
     
      <!-- Launch rviz -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz2.rviz" />
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/viz2.rviz" /> -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/mhl_viz.rviz" />
 
  
 </launch>  
