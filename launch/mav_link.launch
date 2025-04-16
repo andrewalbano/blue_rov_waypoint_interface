@@ -1,0 +1,108 @@
+
+<launch>
+
+
+    <arg name="fcu_url" default="udp://:14550@127.0.0.1:14549"/>
+    <arg name="gcs_url" default="udp://:14549@127.0.0.1:14548"/>
+   
+    <arg name="video_udp_port" default="5600"/>
+    <arg name="system_id" default="255"/>
+    <arg name="component_id" default="240"/>
+    <arg name="tgt_system" default="1"/>
+    <arg name="tgt_component" default="1"/>
+    <arg name="pluginlists_yaml" value="$(find bluerov_ros_playground)/launch/mav_pluginlists.yaml"/>
+    <arg name="config_yaml" value="$(find mavros)/launch/apm_config.yaml"/>
+    <arg name="joy_dev" default="/dev/input/js0"/>
+    <arg name="log_output" default="log"/>
+    <!-- <arg name="log_output" default="screen"/> -->
+    <arg name="atm_pressure" default="103000.0"/>
+    <arg name="water_density" default="1027.0" />
+
+    <node pkg="mavros" type="mavros_node" name="mavros" required="true" clear_params="true" output="$(arg log_output)">
+        <param name="fcu_url" value="$(arg fcu_url)"/>
+        <param name="gcs_url" value="$(arg gcs_url)"/>
+        <param name="system_id" value="$(arg system_id)"/>
+        <param name="component_id" value="$(arg component_id)"/>
+        <param name="target_system_id" value="$(arg tgt_system)"/>
+        <param name="target_component_id" value="$(arg tgt_component)"/>
+    
+ 
+        <!-- load blacklist, config -->
+        <rosparam command="load" file="$(arg pluginlists_yaml)"/>
+        <rosparam command="load" file="$(arg config_yaml)"/>
+    </node>
+
+
+    <node pkg="rosservice" type="rosservice" name="mavros_set_stream" args="call --wait /mavros/set_stream_rate 0 10 1"/>
+
+    
+ 
+    <node pkg="bluerov_ros_playground" type="user_mav" name="user_node" output="$(arg log_output)">
+        <param name="video_udp_port" value="$(arg video_udp_port)"/>
+    </node> 
+
+    <node pkg="onr_utils" type="depth_pub.py" name="depth_publisher"/>
+
+    <node respawn="true" pkg="bluerov_ros_playground" type="barometer.py"
+        name="bar30_listener" output = "log">
+        <param name="atm_pressure" value="$(arg atm_pressure)"/>
+        <param name="water_density" value="$(arg water_density)"/>
+    </node>master = mavutil.mavlink_connection('udpin:0.0.0.0:14548'name="base2dvl" args="0.16443882752 0.004293588903 0.28362510322 0 0 0.05054822579625977 base_link dvl_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2bar" args="0.0 0.0 0.0 0 0 0 base_link bar_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2sonar" args="0.164107 0.10618 0.30638500108 0 0 0 base_link sonar_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="base2imu" args="0 0 0 0 0 0 base_link imu_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="tmpned2base" args="0.3 -0.2 0.5 0 0 0 NED base_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="ping360_stf" args="0.09 0.12531 -0.1216 0 0 0 base_link ping360_link 100"/>
+
+ 
+    <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui_4.py" output="screen"/> 
+    <node name="simulator_node" pkg="simulating_nodes" type="sitl_simulator.py" output="screen" />
+
+
+  master = mavutil.mavlink_connection('udpin:0.0.0.0:14548'
+  
+    <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller.py" output="screen"/>
+
+    <param name="robot_description" command="$(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro'" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/mhl_viz.rviz" />
+
+   
+
+    
+
+</launch>
+
+
+   
+    <!-- <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui_4.py" output="screen"/>  -->
+  
+  
+    <!-- <node name="waypoint_follower" pkg="blue_rov_motion_controller" type="motion_controller.py" output="screen"/> -->
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/mhl_viz.rviz" /> -->
+
+
+master = mavutil.mavlink_connection('udpin:0.0.0.0:14548'
+    <!-- <node name="path_planner" pkg="blue_rov_path_plan" type="path_planner.py" output="screen"/>
+
+ 
+    <node name="get_ned_test" pkg="simulating_nodes" type="get_ned.py" output="screen" />
+    <node name="get_attitude_test" pkg="simulating_nodes" type="get_attitude.py" output="screen" />
+    <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />
+
+
+    <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>  
+    
+   
+  
+    <param name="robot_description" command="$master = mavutil.mavlink_connection('udpin:0.0.0.0:14548'(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro'" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+    
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/mhl_viz.rviz" />
+    
+ 
+ -->
+
+
+master = mavutil.mavlink_connection('udpin:0.0.0.0:14548'
