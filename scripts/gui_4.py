@@ -37,7 +37,9 @@ class windows(Tk):
         self.pub18 = rospy.Publisher("visualize_preset_pattern_path", Path, queue_size=1) # not used yet
         # self.pub19 = rospy.Publisher("state", PoseWithCovarianceStamped, queue_size=1) # not used yet
         # Setting window icon
-        self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
+        # self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
+        self.icon = PhotoImage(file="/home/frog-onr/mhl_ws/src/blue_rov_waypoint_interface/scripts/waypoint_interface_image.png")
+
         self.iconphoto(True, self.icon)
 
 
@@ -60,10 +62,9 @@ class windows(Tk):
         # initialize target depth
         self.target_depth = None
 
-        # initial lat,long, alt
+        # initial lat,long, alt, once we get the gps working need to add these as parameers at startup
         self.init_lat_ref = 42.2808
         self.init_lon_ref = -83.7430
-
         self.init_x_utm , self.init_y_utm, _, _ = utm.from_latlon(self.init_lat_ref, self.init_lon_ref, force_northern=True)
         
 
@@ -101,24 +102,8 @@ class windows(Tk):
 
         self.temp_pose = PoseStamped()
 
-
-
-    
-    
-        # we dont really need to call back the values
-        # used to set limits for safe operation
-        # self.max_linear_velocity = 0
-        # self.min_pwm = 0
-        # self.max_pwm = 0
-    
-        # used in velocity mode for velocity setpoints
-        # self.vx = 0
-        # self.vy = 0
-        # self.vz = 0
-        # self.vyaw = 0
-
         # this stores the last waypoint visualized relative to the current state at the time of visualizing
-        #  when you add a waypoint relative to current state, you need to visualize then add it, this is a safety feature to prevent issues 
+        #  when you add a waypoint relative to current state, you need to visualize then add it, this is a safety feature to prevent issues for adding waypoints while moving
         self.last_waypoint_rel_to_current_state_visualized = Pose()
         self.last_waypoint_rel_to_current_state_visualized = None
         #  this holds the transform for the last waypoint visualized
@@ -3698,12 +3683,12 @@ if __name__ == '__main__':
 
     rospy.init_node('waypoint_gui')
     interface = windows()
-    try:
-        while not rospy.is_shutdown():
-            
-            interface.mainloop()
-    except Exception as error:
-        rospy.logerr("An error occurred:", error)
+    # try:
+    while not rospy.is_shutdown():
+        
+        interface.mainloop()
+    # except Exception as error:
+    #     rospy.logerr("An error occurred:", error)
         
         
         

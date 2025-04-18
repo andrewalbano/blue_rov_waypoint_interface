@@ -1,6 +1,6 @@
 
 <launch>
-    <arg name="log_output" default="log"/>
+    <!-- <arg name="log_output" default="screen"/> -->
     <!--  launching waypoint gui-->
     <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui_4.py" output="screen"/>
   
@@ -10,11 +10,8 @@
     <!-- launch path planenrs  -->
     <node name="path_planner" pkg="blue_rov_path_plan" type="path_planner.py" output="screen"/>
     <node name="intermediate_waypoints_generator" pkg="blue_rov_path_plan" type="plan_intermediate_waypoints.py" output="screen"/>
-    <!-- <node name="user_node" pkg="simulating_nodes" type="blue_rov_connection.py" output="screen" /> -->
+   
     
-
-
- 
     <node name="get_ned_test" pkg="simulating_nodes" type="get_ned.py" output="screen" />
     <node name="get_attitude_test" pkg="simulating_nodes" type="get_attitude.py" output="screen" />
     <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />
