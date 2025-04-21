@@ -37,8 +37,8 @@ class windows(Tk):
         self.pub18 = rospy.Publisher("visualize_preset_pattern_path", Path, queue_size=1) # not used yet
         # self.pub19 = rospy.Publisher("state", PoseWithCovarianceStamped, queue_size=1) # not used yet
         # Setting window icon
-        # self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
-        self.icon = PhotoImage(file="/home/frog-onr/mhl_ws/src/blue_rov_waypoint_interface/scripts/waypoint_interface_image.png")
+        self.icon = PhotoImage(file="/home/andrew/bluerov_waypoint_follower/src/blue_rov_waypoint_interface/scripts/desktop_image_2.png")
+        # self.icon = PhotoImage(file="/home/frog-onr/mhl_ws/src/blue_rov_waypoint_interface/scripts/waypoint_interface_image.png")
 
         self.iconphoto(True, self.icon)
 
@@ -1643,7 +1643,7 @@ class windows(Tk):
         new_y = y + (radius*np.sin(angle))
         
         # get yaw of last point in degrees
-        yaw = (angle+np.pi/2)*180/np.pi
+        yaw = (angle + direction_sign* np.pi/2)*180/np.pi
         self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style, alg)   
 
         # buttons are disabled until the next pattern is visualized
@@ -2048,7 +2048,7 @@ class windows(Tk):
         new_y = y + (radius*np.sin(angle))
         
         # get yaw of last point in degrees
-        yaw = (angle+np.pi/2)*180/np.pi
+        yaw = (angle+ direction_sign*np.pi/2)*180/np.pi
 
         waypoint = self.preset_pattern_visualize_waypoint_3(new_x, new_y, z, yaw)
         self.preset_pattern.poses.append(waypoint.pose)
@@ -2195,7 +2195,7 @@ class windows(Tk):
         new_y = y + (radius*np.sin(angle))
         
         # get yaw of last point in degrees
-        yaw = (angle+np.pi)*180/np.pi
+        yaw = (angle-np.pi)*180/np.pi
 
         # self.submit_waypoint_3(new_x, new_y, z, yaw, path_orientation_style)    
         waypoint = self.preset_pattern_visualize_waypoint_3(new_x, new_y, z, yaw)
