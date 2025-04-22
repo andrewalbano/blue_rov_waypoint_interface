@@ -1,0 +1,32 @@
+
+<launch>
+    <!-- <arg name="log_output" default="screen"/> -->
+    <!--  launching waypoint gui-->
+    <!-- <node name="waypoint_gui" pkg="blue_rov_waypoint_interface" type="gui_4.py" output="screen"/> -->
+  
+    <!-- launch  MOTION_CONTROLLER  -->
+    <node name="test_attitude" pkg="blue_rov_motion_controller" type="test_target_attitude.py" output="screen"/>
+
+    <!-- launch path planenrs  -->
+    <!-- <node name="path_planner" pkg="blue_rov_path_plan" type="path_planner.py" output="screen"/> -->
+    <!-- <node name="intermediate_waypoints_generator" pkg="blue_rov_path_plan" type="plan_intermediate_waypoints.py" output="screen"/> -->
+   
+    
+    <node name="get_ned_test" pkg="simulating_nodes" type="get_ned.py" output="screen" />
+    <node name="get_attitude_test" pkg="simulating_nodes" type="get_attitude.py" output="screen" />
+    <node name="simulator_node" pkg="simulating_nodes" type="get_pose.py" output="screen" />
+
+
+    <node pkg="tf" type="static_transform_publisher" name="map2ned" args="0 0 0 0 0 3.141592653589793 map NED 100"/>  
+    -
+   
+  
+    <param name="robot_description" command="$(find xacro)/xacro '$(find blue_rov_waypoint_interface)/bluerov_model/BlueRov2_MHL.urdf.xacro'" />
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+    
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find blue_rov_waypoint_interface)/mhl_viz.rviz" />
+
+</launch>   
+
+

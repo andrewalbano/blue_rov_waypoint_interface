@@ -3,7 +3,8 @@ Panels:
     Help Height: 0
     Name: Displays
     Property Tree Widget:
-      Expanded: ~
+      Expanded:
+        - /Actual Path1
       Splitter Ratio: 0.6247334480285645
     Tree Height: 208
   - Class: rviz/Selection
@@ -419,7 +420,7 @@ Visualization Manager:
       Axes Radius: 0.05000000074505806
       Class: rviz/PoseArray
       Color: 143; 89; 2
-      Enabled: true
+      Enabled: false
       Head Length: 0.10000000149011612
       Head Radius: 0.10000000149011612
       Name: Goal Waypoints
@@ -429,7 +430,7 @@ Visualization Manager:
       Shape: Arrow (3D)
       Topic: /waypoint_plot_visualization
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -475,7 +476,7 @@ Visualization Manager:
       Radius: 0.029999999329447746
       Shaft Diameter: 0.10000000149011612
       Shaft Length: 0.10000000149011612
-      Topic: /robot_path
+      Topic: /actual_path
       Unreliable: false
       Value: true
     - Class: rviz/Image
@@ -518,7 +519,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.571173667907715
+      Distance: 10
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -526,18 +527,32 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.38094890117645264
-        Y: -0.04986896738409996
-        Z: -0.25025320053100586
+        X: 0
+        Y: 0
+        Z: 0
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2897964715957642
+      Pitch: 0.6603981852531433
       Target Frame: base_link
-      Yaw: 3.240399122238159
-    Saved: ~
+      Yaw: 0.6503981947898865
+    Saved:
+      - Angle: 0
+        Class: rviz/TopDownOrtho
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.05999999865889549
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Invert Z Axis: false
+        Name: TopDownOrtho
+        Near Clip Distance: 0.009999999776482582
+        Scale: 200
+        Target Frame: base_link
+        X: 1.2249995470046997
+        Y: -1.4699994325637817
 Window Geometry:
   Displays:
     collapsed: false

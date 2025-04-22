@@ -516,8 +516,8 @@ class windows(Tk):
             yaw = self.entry_to_float(yaw)*np.pi / 180
 
             # update the transform for the waypoint
-            trans_matrix = translation_matrix([x,y,z])
-            rot_matrix = euler_matrix(roll,pitch,yaw)
+            # trans_matrix = translation_matrix([x,y,z])
+            # rot_matrix = euler_matrix(roll,pitch,yaw)
             pose_msg = Pose()
             # formatting for rviz visualization
             pose_stamped_msg = PoseStamped()
